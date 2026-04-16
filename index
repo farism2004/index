@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DxArena — Clinical Reasoning Arena</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F0EEE8;color:#1a1a1a;height:100vh;overflow:hidden}
+
+/* ── Auth screens ── */
+.auth-screen{position:fixed;inset:0;background:#F0EEE8;display:flex;align-items:center;justify-content:center;z-index:200;flex-direction:column;gap:0}
+.auth-screen.hidden{display:none}
+.auth-card{background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:380px;box-shadow:0 4px 32px rgba(0,0,0,.1)}
+.auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem}
+.auth-logo-icon{width:38px;height:34px;background:#185FA5;border-radius:9px;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:800;letter-spacing:-.5px}
+.auth-logo-text{font-size:20px;font-weight:800;color:#1a1a1a}
+.auth-logo-sub{font-size:12px;color:#888;margin-left:2px}
+.auth-title{font-size:18px;font-weight:700;margin-bottom:4px}
+.auth-sub{font-size:13px;color:#666;margin-bottom:1.5rem;line-height:1.5}
+.auth-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.auth-field label{font-size:12px;font-weight:600;color:#444}
+.auth-field input{font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;color:#1a1a1a;outline:none;font-family:inherit;width:100%}
+.auth-field input:focus{border-color:#185FA5;background:#fff;box-shadow:0 0 0 3px rgba(24,95,165,.1)}
+.auth-btn{width:100%;background:#185FA5;color:white;border:none;padding:11px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;transition:background .15s}
+.auth-btn:hover{background:#0C447C}
+.auth-btn:disabled{background:#d3d1c7;cursor:default}
+.auth-switch{text-align:center;margin-top:1rem;font-size:13px;color:#666}
+.auth-switch a{color:#185FA5;font-weight:600;cursor:pointer;text-decoration:none}
+.auth-switch a:hover{text-decoration:underline}
+.auth-error{background:#FCEBEB;color:#791F1F;border-radius:7px;padding:8px 11px;font-size:12px;margin-bottom:10px;display:none}
+.auth-error.show{display:block}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:12px 0;color:#aaa;font-size:12px}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:#e5e3da}
+
+/* ── Layout ── */
+.app{display:grid;grid-template-columns:260px 1fr;grid-template-rows:52px 1fr 110px;height:100vh;gap:1px;background:#D3D1C7}
+.app.hidden{display:none}
+
+/* ── Topbar ── */
+.topbar{grid-column:1/-1;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;border-bottom:1px solid #e5e3da}
+.logo{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.logo-icon{width:32px;height:28px;background:#185FA5;border-radius:7px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:800;letter-spacing:-.5px}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.badge-blue{background:#E6F1FB;color:#185FA5}.badge-amber{background:#FAEEDA;color:#854F0B}
+.badge-green{background:#EAF3DE;color:#3B6D11}.badge-red{background:#FCEBEB;color:#A32D2D}
+.user-pill{display:flex;align-items:center;gap:8px;background:#F5F3EE;border:1px solid #e5e3da;border-radius:20px;padding:4px 12px 4px 6px;cursor:pointer;transition:background .15s}
+.user-pill:hover{background:#e5e3da}
+.user-avatar{width:24px;height:24px;border-radius:50%;background:#185FA5;color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.user-name{font-size:12px;font-weight:600;color:#1a1a1a}
+.user-pts{font-size:11px;color:#185FA5;font-weight:700}
+
+/* ── Left panel (notes) ── */
+.left-panel{background:#fff;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid #e5e3da}
+.notes-header{padding:10px .875rem 8px;border-bottom:1px solid #e5e3da;flex-shrink:0}
+.notes-title{font-size:13px;font-weight:700}
+.notes-pt{font-size:11px;color:#666;margin-top:1px}
+.notes-resources{padding:8px .875rem;border-bottom:1px solid #f0eeea;flex-shrink:0}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat-box{background:#F5F3EE;border-radius:8px;padding:9px;text-align:center}
+.stat-val{font-size:22px;font-weight:700}.stat-lbl{font-size:10px;color:#888;margin-top:1px}
+.pbar-track{height:4px;background:#e5e3da;border-radius:2px;margin-top:6px}
+.pbar-fill{height:4px;border-radius:2px;transition:width .4s,background .4s;background:#185FA5}
+.notes-body{flex:1;overflow-y:auto;padding:.75rem .875rem;display:flex;flex-direction:column;gap:12px}
+.notes-section{display:flex;flex-direction:column;gap:4px}
+.notes-slbl{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.07em;padding-bottom:4px;border-bottom:1px solid #f0eeea;margin-bottom:2px}
+.notes-empty{font-size:11.5px;color:#ccc;font-style:italic}
+.note-entry{display:flex;gap:6px;align-items:baseline;animation:fadein .3s ease}
+.note-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.note-dot.crit{background:#E24B4A}.note-dot.res{background:#185FA5}.note-dot.norm{background:#B4B2A9}
+.note-text{font-size:11.5px;color:#1a1a1a;line-height:1.55}
+.note-text strong{font-weight:700;color:#444}
+
+/* ── Center (timeline) ── */
+.center{background:#fff;display:flex;flex-direction:column;overflow:hidden}
+.timeline{flex:1;padding:.875rem 1rem;display:flex;flex-direction:column;gap:9px;overflow-y:auto}
+.msg{display:flex;gap:9px;align-items:flex-start;animation:fadein .25s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:2px}
+.av-u{background:#EEEDFE;color:#534AB7}.av-s{background:#E1F5EE;color:#0F6E56}.av-c{background:#FCEBEB;color:#A32D2D}
+.mb{flex:1}.mlbl{font-size:10px;color:#888;margin-bottom:2px;font-weight:600}
+.mt{font-size:13px;line-height:1.65;background:#F5F3EE;padding:9px 12px;border-radius:8px;color:#1a1a1a}
+.mt.crit{background:#FCEBEB;color:#791F1F;border-left:3px solid #E24B4A}
+.mt.norm{background:#EAF3DE;color:#27500A;border-left:3px solid #639922}
+.mt.res{background:#E6F1FB;color:#0C447C;border-left:3px solid #185FA5}
+.mt.act{background:#EEEDFE;color:#3C3489;border-left:3px solid #534AB7}
+.mt.warn{background:#FAEEDA;color:#633806;border-left:3px solid #BA7517}
+
+/* ── Bottom bar ── */
+.bottom-bar{grid-column:2;background:#fff;border-top:1px solid #e5e3da;display:flex;flex-direction:column;justify-content:center;padding:10px 1rem;gap:8px}
+.bottom-row{display:flex;gap:8px;align-items:center}
+.search-input{flex:1;font-size:13px;padding:9px 13px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;color:#1a1a1a;outline:none;font-family:inherit}
+.search-input:focus{border-color:#185FA5;background:#fff;box-shadow:0 0 0 3px rgba(24,95,165,.1)}
+.diag-input{font-size:12px;padding:8px 11px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;color:#1a1a1a;outline:none;font-family:inherit;width:200px}
+.diag-input:focus{border-color:#3B6D11;background:#fff;box-shadow:0 0 0 3px rgba(59,109,17,.1)}
+.btn-diag{background:#3B6D11;color:white;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-diag:hover{background:#27500A}.btn-diag:disabled{background:#d3d1c7;color:#888;cursor:default}
+.adots{display:flex;gap:3px;align-items:center}
+.adot{width:7px;height:7px;border-radius:50%;background:#e5e3da}
+.adot.used{background:#E24B4A}.adot.on{background:#3B6D11}
+.suggestions{background:#fff;border:1px solid #d3d1c7;border-radius:8px;max-height:220px;overflow-y:auto;display:none;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
+.suggestions.open{display:block}
+.sug-item{padding:9px 13px;font-size:13px;cursor:pointer;border-bottom:0.5px solid #f0eeea;display:flex;align-items:center;justify-content:space-between}
+.sug-item:last-child{border-bottom:none}
+.sug-item:hover,.sug-item.sel{background:#E6F1FB;color:#185FA5}
+.sug-item em{font-style:normal;font-weight:700;color:#185FA5}
+.sug-item.sel em{color:#0C447C}
+.sug-cat{font-size:10px;color:#888;margin-left:8px;flex-shrink:0;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.sug-item:hover .sug-cat,.sug-item.sel .sug-cat{color:#185FA5}
+
+/* ── Profile modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:#fff;border-radius:14px;padding:1.5rem;max-width:480px;width:92%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.25)}
+.modal h2{font-size:19px;font-weight:700;margin-bottom:4px}
+.msub{font-size:13px;color:#666;margin-bottom:1rem}
+
+/* ── Profile dashboard ── */
+.profile-header{display:flex;align-items:center;gap:14px;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid #f0eeea}
+.profile-avatar{width:52px;height:52px;border-radius:50%;background:#185FA5;color:white;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
+.profile-name{font-size:17px;font-weight:700}
+.profile-email{font-size:12px;color:#888;margin-top:2px}
+.profile-joined{font-size:11px;color:#aaa;margin-top:2px}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem}
+.stat-card{background:#F5F3EE;border-radius:10px;padding:12px;text-align:center}
+.stat-card-val{font-size:24px;font-weight:700;color:#185FA5}
+.stat-card-lbl{font-size:11px;color:#888;margin-top:2px}
+.history-section{margin-bottom:1rem}
+.history-title{font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.history-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:8px;background:#F5F3EE;margin-bottom:5px}
+.history-case{font-size:13px;font-weight:600;color:#1a1a1a}
+.history-meta{font-size:11px;color:#888;margin-top:2px}
+.history-score{font-size:14px;font-weight:700}
+.history-score.pass{color:#3B6D11}.history-score.fail{color:#A32D2D}
+.cat-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:1.25rem}
+.cat-card{background:#F5F3EE;border-radius:8px;padding:10px 12px}
+.cat-name{font-size:12px;font-weight:700;color:#1a1a1a}
+.cat-count{font-size:11px;color:#888;margin-top:2px}
+.cat-bar-track{height:3px;background:#e5e3da;border-radius:2px;margin-top:6px}
+.cat-bar-fill{height:3px;border-radius:2px;background:#185FA5}
+.btn-signout{width:100%;background:#F5F3EE;color:#A32D2D;border:1px solid #f0c0c0;padding:9px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px}
+.btn-signout:hover{background:#FCEBEB}
+
+/* ── End screen ── */
+.score-box{text-align:center;padding:1rem;background:#F5F3EE;border-radius:10px;margin-bottom:1rem}
+.score-num{font-size:48px;font-weight:700;line-height:1}
+.score-grade{font-size:18px;font-weight:700;margin-top:4px}
+.score-lbl{font-size:13px;color:#666;margin-top:2px}
+.rst{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.rdiag{font-size:15px;font-weight:700;color:#185FA5;background:#E6F1FB;padding:10px 13px;border-radius:8px;margin-bottom:6px}
+.rexp{font-size:12.5px;color:#444;line-height:1.75}
+.rlist{list-style:none;display:flex;flex-direction:column;gap:3px}
+.rlist li{font-size:12.5px;padding:5px 10px;border-radius:7px}
+.rlist li.g{background:#EAF3DE;color:#27500A}
+.rlist li.m{background:#FAEEDA;color:#633806}
+.rlist li.bad{background:#FCEBEB;color:#791F1F}
+.rsec{margin-bottom:1rem}
+.points-earned{background:#EAF3DE;border-radius:10px;padding:10px;text-align:center;margin-bottom:1rem}
+.points-earned-num{font-size:28px;font-weight:700;color:#3B6D11}
+.points-earned-lbl{font-size:12px;color:#3B6D11;margin-top:2px}
+.btn-end{width:100%;padding:10px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;margin-top:6px}
+.btn-end.pr{background:#185FA5;color:white}.btn-end.pr:hover{background:#0C447C}
+.btn-end.sc{background:#F5F3EE;color:#1a1a1a;border:1px solid #d3d1c7}.btn-end.sc:hover{background:#e5e3da}
+.case-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:1rem}
+.ccard{background:#F5F3EE;border:1.5px solid #e5e3da;border-radius:10px;padding:13px;cursor:pointer;transition:all .15s}
+.ccard:hover{border-color:#185FA5;background:#E6F1FB}
+.ccard-t{font-size:13px;font-weight:700}.ccard-s{font-size:11px;color:#666;margin-top:2px;line-height:1.4}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#d3d1c7;border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- ── Auth Screen ── -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">Dx</div>
+      <div><div class="auth-logo-text">DxArena</div><div class="auth-logo-sub">Clinical Reasoning Arena</div></div>
+    </div>
+    <div id="authError" class="auth-error"></div>
+
+    <!-- Login view -->
+    <div id="loginView">
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-sub">Sign in to track your progress and scores.</div>
+      <div class="auth-field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com" /></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••" /></div>
+      <button class="auth-btn" onclick="doLogin()">Sign in</button>
+      <div class="auth-switch">No account? <a onclick="switchAuth('signup')">Sign up free</a></div>
+    </div>
+
+    <!-- Signup view -->
+    <div id="signupView" style="display:none">
+      <div class="auth-title">Create your account</div>
+      <div class="auth-sub">Join DxArena and start sharpening your clinical reasoning.</div>
+      <div class="auth-field"><label>Email</label><input type="email" id="signupEmail" placeholder="you@example.com" /></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="signupPassword" placeholder="Min. 6 characters" /></div>
+      <button class="auth-btn" onclick="doSignup()">Create account</button>
+      <div class="auth-switch">Already have an account? <a onclick="switchAuth('login')">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main App ── -->
+<div class="app hidden" id="mainApp">
+  <div class="topbar">
+    <div class="logo"><div class="logo-icon">Dx</div>DxArena</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="catB" class="badge badge-blue">—</span>
+      <span id="difB" class="badge badge-amber">—</span>
+      <span id="cNum" style="font-size:12px;color:#888">—</span>
+      <button onclick="showSel()" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid #d3d1c7;background:#F5F3EE;color:#666;cursor:pointer;font-family:inherit">Change case</button>
+      <div class="user-pill" onclick="showProfile()" id="userPill">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <span class="user-name" id="userName">—</span>
+        <span class="user-pts" id="userPts">0 pts</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="left-panel">
+    <div class="notes-header">
+      <div class="notes-title" id="ptN">—</div>
+      <div class="notes-pt" id="ptI">—</div>
+      <div class="notes-pt" id="ptCC" style="margin-top:3px;color:#0C447C;font-weight:600">—</div>
+    </div>
+    <div class="notes-resources">
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-val" id="stL">—</div><div class="stat-lbl">Steps left</div></div>
+        <div class="stat-box"><div class="stat-val" id="dgL" style="color:#3B6D11">3</div><div class="stat-lbl">Diagnoses left</div></div>
+      </div>
+      <div class="pbar-track"><div class="pbar-fill" id="pb" style="width:100%"></div></div>
+    </div>
+    <div class="notes-body">
+      <div class="notes-section"><div class="notes-slbl">Vitals</div><div id="nVitals"></div></div>
+      <div class="notes-section"><div class="notes-slbl">History</div><div id="nHist"><span class="notes-empty">None taken yet</span></div></div>
+      <div class="notes-section"><div class="notes-slbl">Exam</div><div id="nExam"><span class="notes-empty">None performed yet</span></div></div>
+      <div class="notes-section"><div class="notes-slbl">Labs</div><div id="nLabs"><span class="notes-empty">None ordered yet</span></div></div>
+      <div class="notes-section"><div class="notes-slbl">Imaging</div><div id="nImg"><span class="notes-empty">None ordered yet</span></div></div>
+    </div>
+  </div>
+
+  <div class="center">
+    <div class="timeline" id="tl"></div>
+  </div>
+
+  <div class="bottom-bar">
+    <div id="sugList" class="suggestions"></div>
+    <div class="bottom-row">
+      <input id="searchInput" class="search-input" type="text" autocomplete="off"
+        placeholder='Order a test or ask a question — e.g. "CT head", "family history", "troponin"' />
+      <div style="width:1px;height:28px;background:#e5e3da;flex-shrink:0"></div>
+      <input id="diagInput" class="diag-input" type="text" placeholder="Enter diagnosis..." />
+      <div class="adots" id="adots">
+        <div class="adot on"></div><div class="adot on"></div><div class="adot on"></div>
+      </div>
+      <button class="btn-diag" id="diagBtn" onclick="doDiag()">Diagnose</button>
+    </div>
+  </div>
+</div>
+
+<div id="ov"></div>
+
+<script>
+// ── Supabase ────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://vyngrqvucmhqhnbrfkgh.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bmdycXZ1Y21ocWhuYnJma2doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzkzNDAsImV4cCI6MjA5MTg1NTM0MH0.U64gHzArhKOObecV1Jt-Gxh94IPNWK8OGNYVTuzNi5w';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let userProfile = null;
+
+// ── Auth helpers ────────────────────────────────────────────────────────────
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  el.textContent = msg; el.className = 'auth-error show';
+}
+function clearAuthError() {
+  document.getElementById('authError').className = 'auth-error';
+}
+function switchAuth(view) {
+  clearAuthError();
+  document.getElementById('loginView').style.display = view==='login' ? 'block' : 'none';
+  document.getElementById('signupView').style.display = view==='signup' ? 'block' : 'none';
+}
+function setAuthBtn(disabled) {
+  document.querySelectorAll('.auth-btn').forEach(b => b.disabled = disabled);
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
+  clearAuthError(); setAuthBtn(true);
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  setAuthBtn(false);
+  if (error) showAuthError(error.message);
+}
+
+async function doSignup() {
+  const email = document.getElementById('signupEmail').value.trim();
+  const pass = document.getElementById('signupPassword').value;
+  if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
+  if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+  clearAuthError(); setAuthBtn(true);
+  const { error } = await sb.auth.signUp({ email, password: pass });
+  setAuthBtn(false);
+  if (error) { showAuthError(error.message); return; }
+  showAuthError('✓ Account created! Check your email to confirm, then sign in.');
+  document.getElementById('authError').style.background = '#EAF3DE';
+  document.getElementById('authError').style.color = '#27500A';
+}
+
+async function doSignOut() {
+  await sb.auth.signOut();
+  document.getElementById('ov').innerHTML = '';
+  document.getElementById('mainApp').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+  currentUser = null; userProfile = null;
+}
+
+async function loadProfile() {
+  if (!currentUser) return;
+  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  userProfile = data;
+  if (data) {
+    const initials = (data.email||'?')[0].toUpperCase();
+    document.getElementById('userAvatar').textContent = initials;
+    document.getElementById('userName').textContent = data.email.split('@')[0];
+    document.getElementById('userPts').textContent = (data.total_points||0) + ' pts';
+  }
+}
+
+async function saveAttempt(correct, score) {
+  if (!currentUser) return;
+  const pts = correct ? Math.max(10, score) : 5;
+  await sb.from('case_attempts').insert({
+    user_id: currentUser.id,
+    case_id: cc.id,
+    case_title: cc.title,
+    case_category: cc.cat,
+    score,
+    correct,
+    steps_used: cc.stepsUsed,
+    max_steps: cc.maxSteps,
+    diag_attempts: dAttempts
+  });
+  await sb.from('profiles').update({
+    total_points: (userProfile?.total_points||0) + pts,
+    cases_completed: (userProfile?.cases_completed||0) + 1
+  }).eq('id', currentUser.id);
+  await loadProfile();
+  return pts;
+}
+
+async function showProfile() {
+  if (!currentUser) return;
+  await loadProfile();
+  const { data: attempts } = await sb.from('case_attempts')
+    .select('*').eq('user_id', currentUser.id)
+    .order('completed_at', { ascending: false }).limit(20);
+
+  const total = attempts?.length || 0;
+  const passed = attempts?.filter(a=>a.correct).length || 0;
+  const avgScore = total ? Math.round(attempts.reduce((s,a)=>s+a.score,0)/total) : 0;
+
+  // Category breakdown
+  const cats = {};
+  (attempts||[]).forEach(a => {
+    if (!cats[a.case_category]) cats[a.case_category] = {total:0,passed:0};
+    cats[a.case_category].total++;
+    if (a.correct) cats[a.case_category].passed++;
+  });
+  const maxCat = Math.max(...Object.values(cats).map(c=>c.total), 1);
+
+  const el = document.createElement('div'); el.className='overlay';
+  el.innerHTML=`<div class="modal">
+    <div class="profile-header">
+      <div class="profile-avatar">${(userProfile?.email||'?')[0].toUpperCase()}</div>
+      <div>
+        <div class="profile-name">${userProfile?.email?.split('@')[0]||'User'}</div>
+        <div class="profile-email">${userProfile?.email||''}</div>
+        <div class="profile-joined">Member since ${new Date(userProfile?.created_at||Date.now()).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-card-val">${userProfile?.total_points||0}</div><div class="stat-card-lbl">Total points</div></div>
+      <div class="stat-card"><div class="stat-card-val">${total}</div><div class="stat-card-lbl">Cases played</div></div>
+      <div class="stat-card"><div class="stat-card-val">${total?Math.round(passed/total*100):0}%</div><div class="stat-card-lbl">Pass rate</div></div>
+    </div>
+    ${Object.keys(cats).length ? `
+    <div class="history-section">
+      <div class="history-title">By specialty</div>
+      <div class="cat-row">${Object.entries(cats).map(([cat,d])=>`
+        <div class="cat-card">
+          <div class="cat-name">${cat}</div>
+          <div class="cat-count">${d.total} case${d.total>1?'s':''} · ${Math.round(d.passed/d.total*100)}% pass</div>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(d.total/maxCat*100)}%"></div></div>
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
+    <div class="history-section">
+      <div class="history-title">Recent cases</div>
+      ${(attempts||[]).slice(0,8).map(a=>`
+        <div class="history-item">
+          <div>
+            <div class="history-case">${a.case_title} <span style="font-size:11px;color:#888;font-weight:400">· ${a.case_category}</span></div>
+            <div class="history-meta">${new Date(a.completed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · ${a.steps_used}/${a.max_steps} steps · ${a.diag_attempts} dx attempt${a.diag_attempts>1?'s':''}</div>
+          </div>
+          <div class="history-score ${a.correct?'pass':'fail'}">${a.score}</div>
+        </div>`).join('') || '<div style="color:#aaa;font-size:13px">No cases played yet.</div>'}
+    </div>
+    <button class="btn-signout" onclick="doSignOut()">Sign out</button>
+    <button class="btn-end sc" onclick="document.getElementById('ov').innerHTML=''" style="margin-top:6px">Close</button>
+  </div>`;
+  document.getElementById('ov').innerHTML = '';
+  document.getElementById('ov').appendChild(el);
+}
+
+// ── Auth state listener ─────────────────────────────────────────────────────
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    currentUser = session.user;
+    await loadProfile();
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    if (!cc) load(0);
+  } else {
+    currentUser = null;
+    document.getElementById('authScreen').classList.remove('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+  }
+});
+
+// handle enter on auth inputs
+['loginEmail','loginPassword'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+});
+['signupEmail','signupPassword'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if(e.key==='Enter') doSignup(); });
+});
+
+const CASES = [
+ {
+  id:1,title:"Case #1",cat:"Neurology",dif:"Beginner",maxSteps:12,
+  pt:{name:"James Carter",age:25,sex:"Male",occ:"Software engineer"},
+  cc:"Sudden severe headache starting 2 hours ago",
+  vitals:{BP:"138/88 mmHg",HR:"88 bpm",Temp:"98.9°F",SpO2:"99%",RR:"16/min"},
+  dx:"Subarachnoid Hemorrhage (SAH)",
+  dxAliases:["subarachnoid","sah","intracranial hemorrhage","brain bleed","aneurysm rupture"],
+  learn:"A sudden 'thunderclap' headache — worst headache of one's life — is SAH until proven otherwise. CT Head (non-contrast) is the first test; it detects ~98% of SAH within 6 hours. If CT is negative, lumbar puncture showing xanthochromia is confirmatory. Family history of intracranial aneurysms is a major risk factor.",
+  path:["Ask about headache onset & character (thunderclap pattern)","Neurological exam — check for nuchal rigidity","CT Head non-contrast — first-line imaging","Lumbar puncture — if CT negative, xanthochromia confirms"],
+  hist:{
+   onset:{q:"How did the headache start?",a:"It came on suddenly — like a thunderclap. Within seconds it was the worst pain of my life.",tag:"crit",lbl:"Headache onset & speed"},
+   character:{q:"Where is the pain and what does it feel like?",a:"Diffuse, throbbing, mostly in the back of my head and neck. I'd rate it 10 out of 10.",tag:"crit",lbl:"Pain character & location"},
+   nausea:{q:"Any nausea or vomiting?",a:"Yes, I vomited twice since it started.",tag:"res",lbl:"Nausea / vomiting"},
+   photophobia:{q:"Does light or sound make it worse?",a:"Yes, light makes it much worse. I've been hiding in a dark room.",tag:"crit",lbl:"Photophobia / phonophobia"},
+   prior:{q:"Have you had headaches like this before?",a:"I get occasional tension headaches but nothing remotely like this.",tag:"res",lbl:"Prior headache history"},
+   trauma:{q:"Any recent head injury or trauma?",a:"No trauma at all. It came completely out of nowhere.",tag:"res",lbl:"Head trauma history"},
+   fever:{q:"Any fever, chills, or recent illness?",a:"No fever. No recent illness or sick contacts.",tag:"norm",lbl:"Fever / infectious symptoms"},
+   meds:{q:"What medications are you on?",a:"Just ibuprofen occasionally for headaches. No blood thinners.",tag:"res",lbl:"Current medications"},
+   family:{q:"Any family history of aneurysms or strokes?",a:"Yes — my father had a brain aneurysm at age 50.",tag:"crit",lbl:"Family history (aneurysms)"},
+   exertion:{q:"What were you doing when it started?",a:"Sitting quietly at my computer. No exertion at all.",tag:"res",lbl:"Activity at onset"},
+   alcohol:{q:"Alcohol or drug use?",a:"Occasional alcohol on weekends. No illicit drugs.",tag:"norm",lbl:"Alcohol / substance use"},
+   neuroSx:{q:"Any weakness, vision changes, or speech problems?",a:"No weakness, no vision changes, no speech difficulty. Just the headache.",tag:"res",lbl:"Focal neurological symptoms"}
+  },
+  exam:{
+   neuro:{q:"Perform a full neurological exam",a:"Alert, oriented x3. Cranial nerves II-XII intact. Motor strength 5/5 bilaterally. Mild nuchal rigidity present — chin-to-chest limited. Kernig's sign equivocal. No focal deficits.",tag:"crit",lbl:"Neurological exam"},
+   fund:{q:"Perform fundoscopic exam",a:"No papilledema. No subhyaloid hemorrhages noted on fundoscopy.",tag:"res",lbl:"Fundoscopic exam"},
+   skin:{q:"Examine the skin",a:"No rashes, no petechiae, no meningococcal-type purpura.",tag:"norm",lbl:"Skin exam"},
+   cardiac:{q:"Cardiac and pulmonary exam",a:"Regular rate and rhythm. No murmurs. Lungs clear to auscultation bilaterally.",tag:"norm",lbl:"Cardiac & pulmonary exam"},
+   bp_both:{q:"Check blood pressure in both arms",a:"Right arm: 138/88. Left arm: 136/86. Symmetric — no aortic dissection concern.",tag:"res",lbl:"BP bilateral comparison"}
+  },
+  labs:{
+   cbc:{q:"Order CBC",a:"WBC 11.2 (mildly elevated), Hgb 14.1, Plt 230. Mild leukocytosis — likely stress response.",tag:"res",lbl:"CBC"},
+   bmp:{q:"Order BMP",a:"Na 139, K 4.0, BUN 12, Cr 0.9, Glucose 105. All within normal limits.",tag:"norm",lbl:"BMP (Basic Metabolic Panel)"},
+   coags:{q:"Order coagulation studies",a:"PT 12.1s, INR 1.0, PTT 28s — all normal. No coagulopathy.",tag:"norm",lbl:"Coagulation studies (PT/INR/PTT)"},
+   lp:{q:"Perform lumbar puncture",a:"Opening pressure: 25 cmH2O (elevated). Appearance: yellow-tinged (xanthochromic). RBCs: 12,000/mm³ — non-clearing across tubes 1 through 4. Protein 85 mg/dL (elevated). Glucose 62 (normal).",tag:"crit",lbl:"Lumbar puncture (CSF analysis)"},
+   type_screen:{q:"Order type and screen",a:"Blood type A+. Antibody screen negative.",tag:"norm",lbl:"Type & screen"},
+  },
+  img:{
+   ct:{q:"Order CT Head non-contrast",a:"Hyperdense signal in the basal cisterns and sylvian fissures. No hydrocephalus. No midline shift. No intraparenchymal hemorrhage.",tag:"crit",lbl:"CT Head (non-contrast)"},
+   cta:{q:"Order CTA Head and Neck",a:"5mm saccular aneurysm at the junction of the posterior communicating artery (PComA) and internal carotid artery. No other vascular abnormalities identified.",tag:"crit",lbl:"CTA Head / Neck"},
+   mri:{q:"Order MRI Brain",a:"Increased T2/FLAIR signal in the basal cisterns. No parenchymal infarcts or lesions. No mass effect.",tag:"res",lbl:"MRI Brain"},
+   cxr:{q:"Order chest X-ray",a:"No acute cardiopulmonary process. Normal heart size. No pneumothorax.",tag:"norm",lbl:"Chest X-ray"}
+  }
+ },
+ {
+  id:2,title:"Case #2",cat:"Cardiology",dif:"Beginner",maxSteps:12,
+  pt:{name:"Margaret Sullivan",age:62,sex:"Female",occ:"Retired teacher"},
+  cc:"Chest pressure and shortness of breath for the past 3 hours",
+  vitals:{BP:"158/96 mmHg",HR:"102 bpm",Temp:"98.2°F",SpO2:"96%",RR:"20/min"},
+  dx:"Anterior STEMI (ST-Elevation Myocardial Infarction)",
+  dxAliases:["stemi","st elevation","myocardial infarction","heart attack","mi","anterior mi","anterior stemi"],
+  learn:"Women often present with atypical MI symptoms — jaw pain, nausea, fatigue — instead of classic crushing chest pain. The ECG is the single most critical first step for any chest pain workup. Anterior STEMI (ST elevations in V1–V4) implicates the LAD artery and demands immediate cath lab activation. Troponin confirms injury but must never delay reperfusion.",
+  path:["ECG (12-lead STAT) — always the first test for chest pain","Troponin I — confirms myocardial injury","Ask about pain radiation, associated symptoms","Chest X-ray — assess for pulmonary edema","Activate cath lab for reperfusion"],
+  hist:{
+   char:{q:"Describe the chest discomfort",a:"It's a heavy pressure — like an elephant sitting on my chest. It radiates to my left arm and jaw.",tag:"crit",lbl:"Chest pain character"},
+   onset:{q:"When did it start and what were you doing?",a:"About 3 hours ago while I was gardening. Came on gradually and hasn't gone away.",tag:"crit",lbl:"Onset & activity at onset"},
+   assoc:{q:"Any nausea, sweating, or shortness of breath?",a:"Yes — I'm sweating profusely, nauseous, and very anxious. Short of breath too.",tag:"crit",lbl:"Associated symptoms"},
+   prior:{q:"Any prior chest pain or cardiac history?",a:"I had mild exertional chest tightness last month but ignored it. Hypertension and high cholesterol for 10 years.",tag:"res",lbl:"Prior cardiac history"},
+   meds:{q:"What medications are you on?",a:"Lisinopril and atorvastatin. I only take aspirin occasionally, not daily.",tag:"res",lbl:"Current medications"},
+   family:{q:"Family history of heart disease?",a:"My father died of a heart attack at age 58.",tag:"res",lbl:"Family history (cardiac)"},
+   smoking:{q:"Smoking or substance use history?",a:"Former smoker — quit 5 years ago. 30 pack-year history.",tag:"res",lbl:"Smoking history"},
+   radiation:{q:"Does the pain go anywhere else?",a:"Yes — definitely to my left arm and up into my jaw. Also some back discomfort.",tag:"crit",lbl:"Pain radiation"},
+   pleuritic:{q:"Does the pain change with breathing or position?",a:"No — it's constant regardless of breathing or how I sit.",tag:"res",lbl:"Pleuritic / positional quality"},
+   pnd:{q:"Any orthopnea or paroxysmal nocturnal dyspnea?",a:"I've been using two pillows at night recently. Woke up short of breath a few nights ago.",tag:"res",lbl:"Orthopnea / PND"}
+  },
+  exam:{
+   cardiac:{q:"Perform cardiac exam",a:"Tachycardic at 102 bpm. S1/S2 present. New S4 gallop at the apex. No murmurs. JVP mildly elevated at 9cm.",tag:"crit",lbl:"Cardiac exam"},
+   pulm:{q:"Perform pulmonary exam",a:"Bibasilar crackles present. Mild respiratory distress. No wheezing.",tag:"res",lbl:"Pulmonary exam"},
+   ext:{q:"Examine extremities",a:"Mild bilateral ankle edema. Peripheral pulses intact. No cyanosis.",tag:"res",lbl:"Extremities exam"},
+   neuro:{q:"Neurological exam",a:"Alert, anxious, oriented x3. No focal neurological deficits.",tag:"norm",lbl:"Neurological exam"},
+   abdo:{q:"Abdominal exam",a:"Soft, non-tender. No hepatomegaly. No pulsatile mass.",tag:"norm",lbl:"Abdominal exam"}
+  },
+  labs:{
+   troponin:{q:"Order Troponin I",a:"Troponin I: 4.8 ng/mL — CRITICALLY ELEVATED (normal <0.04). Consistent with significant myocardial injury. Repeat in 3 hours.",tag:"crit",lbl:"Troponin I (cardiac enzymes)"},
+   bnp:{q:"Order BNP",a:"BNP: 420 pg/mL (elevated — normal <100). Consistent with early heart failure component.",tag:"res",lbl:"BNP / NT-proBNP"},
+   cbc:{q:"Order CBC",a:"WBC 12.1, Hgb 12.8, Plt 198. Mild stress leukocytosis.",tag:"res",lbl:"CBC"},
+   bmp:{q:"Order BMP",a:"Na 138, K 3.8, Cr 1.1, Glucose 145 (mildly elevated — stress response). BUN 16.",tag:"res",lbl:"BMP"},
+   coags:{q:"Order coagulation studies",a:"PT 12.4s, INR 1.0, PTT 27s. Normal.",tag:"norm",lbl:"Coagulation studies"},
+   lipids:{q:"Order lipid panel",a:"Total cholesterol 248, LDL 171, HDL 38, Triglycerides 196. Dyslipidemia confirmed.",tag:"res",lbl:"Lipid panel"}
+  },
+  img:{
+   ecg:{q:"Order ECG (12-lead STAT)",a:"ST elevations >2mm in leads V1, V2, V3, V4. Reciprocal ST depressions in II, III, aVF. Q waves developing in V1–V2. Rate 102 bpm, regular rhythm.",tag:"crit",lbl:"ECG (12-lead STAT)"},
+   cxr:{q:"Order chest X-ray",a:"Mild pulmonary vascular congestion bilaterally. Cardiomegaly. No pneumothorax. Kerley B lines visible — early pulmonary edema.",tag:"res",lbl:"Chest X-ray"},
+   echo:{q:"Order bedside echocardiogram",a:"Anterior and septal wall hypokinesis. Ejection fraction estimated 38–42% (reduced). No significant valvular disease. No pericardial effusion.",tag:"crit",lbl:"Bedside echocardiogram"},
+   cxr2:{q:"Order portable chest X-ray",a:"Mild pulmonary vascular congestion. Cardiomegaly. Consistent with early decompensated heart failure.",tag:"res",lbl:"Portable chest X-ray"}
+  }
+ },
+ {
+  id:3,title:"Case #3",cat:"Emergency Medicine",dif:"Intermediate",maxSteps:14,
+  pt:{name:"Devon Patel",age:34,sex:"Male",occ:"Construction worker"},
+  cc:"Severe right flank pain radiating to the groin, started 1 hour ago",
+  vitals:{BP:"142/90 mmHg",HR:"98 bpm",Temp:"99.1°F",SpO2:"98%",RR:"18/min"},
+  dx:"Nephrolithiasis — Right Ureterolithiasis",
+  dxAliases:["kidney stone","nephrolithiasis","ureterolithiasis","renal calculus","renal colic","urolithiasis"],
+  learn:"Classic renal colic: sudden severe colicky flank pain radiating to the groin, hematuria, nausea, and inability to find a comfortable position. CT abdomen/pelvis without contrast is the gold standard (sensitivity ~97%). Urinalysis showing hematuria is a fast, cheap supporting test. CVA tenderness is the key physical exam finding.",
+  path:["Ask about pain character and radiation (colicky, flank-to-groin)","Urinalysis — hematuria is key","CT Abdomen/Pelvis non-contrast — diagnostic gold standard","BMP — assess renal function and electrolytes"],
+  hist:{
+   pain:{q:"Describe the pain in full detail",a:"Excruciating waves of sharp, cramping pain in my right flank going down to my groin and inner thigh. I'd say 10/10. It comes in waves — worse then a little better, then worse again.",tag:"crit",lbl:"Pain character & radiation"},
+   urine:{q:"Any changes in your urine or urination?",a:"Yes — I've had urgency and frequency. I noticed the urine looked pinkish-red this morning.",tag:"crit",lbl:"Urinary symptoms / hematuria"},
+   nausea:{q:"Any nausea or vomiting?",a:"Nauseous and vomited once since it started. Can't find a comfortable position — keeps moving around.",tag:"res",lbl:"Nausea / vomiting"},
+   prior:{q:"Have you ever had kidney stones before?",a:"Yes — I had a stone on the left side about 3 years ago. The doctor told me I'm a stone former.",tag:"res",lbl:"Prior kidney stone history"},
+   fever:{q:"Any fever or chills?",a:"No rigors. Temperature was normal at home. No chills.",tag:"res",lbl:"Fever / chills"},
+   diet:{q:"Tell me about your diet and fluid intake",a:"I work outdoors in the heat and honestly don't drink enough water. I eat a high-protein diet.",tag:"res",lbl:"Diet & fluid intake"},
+   meds:{q:"Any current medications?",a:"Nothing regular. Took ibuprofen this morning — barely took the edge off.",tag:"norm",lbl:"Current medications"},
+   family:{q:"Family history of kidney stones?",a:"My older brother has had them too. My dad might have as well.",tag:"res",lbl:"Family history (kidney stones)"},
+   std:{q:"Any penile discharge or STI history?",a:"No discharge, no history of STIs.",tag:"norm",lbl:"Urethral discharge / STI history"},
+   trauma:{q:"Any recent trauma to the flank or abdomen?",a:"No trauma at all. Came on completely out of nowhere.",tag:"res",lbl:"Recent trauma"}
+  },
+  exam:{
+   abd:{q:"Perform abdominal exam",a:"Positive right CVA (costovertebral angle) tenderness on percussion — quite marked. Diffuse mild tenderness. No peritoneal signs. Abdomen soft. No guarding or rigidity.",tag:"crit",lbl:"Abdominal exam (CVA tenderness)"},
+   gen:{q:"General appearance assessment",a:"Patient in obvious distress — writhing on the gurney, diaphoretic, unable to hold still.",tag:"res",lbl:"General appearance"},
+   genit:{q:"Genitourinary exam",a:"No scrotal masses, no scrotal tenderness, no hernia detected. External genitalia normal.",tag:"norm",lbl:"Genitourinary exam"},
+   neuro:{q:"Neurological exam",a:"Alert, oriented x3. No focal deficits. Moving all extremities.",tag:"norm",lbl:"Neurological exam"},
+   skin:{q:"Skin exam",a:"Diaphoretic. No rashes. No costovertebral bruising.",tag:"norm",lbl:"Skin exam"}
+  },
+  labs:{
+   ua:{q:"Order urinalysis",a:"Color: red-tinged. Appearance: cloudy. Microscopy: 50–100 RBCs/hpf. WBC 5–10/hpf. No bacteria. No casts. Nitrite negative.",tag:"crit",lbl:"Urinalysis (UA)"},
+   bmp:{q:"Order BMP",a:"Cr 1.2 (mildly elevated above his baseline of 0.9). BUN 18. Na 138, K 4.1. CO2 22. Glucose 98.",tag:"res",lbl:"BMP"},
+   cbc:{q:"Order CBC",a:"WBC 11.8 (mild leukocytosis). Hgb 15.2, Plt 242.",tag:"res",lbl:"CBC"},
+   ucx:{q:"Order urine culture",a:"No organisms on gram stain. Culture sent — result pending 48 hours.",tag:"norm",lbl:"Urine culture"},
+   psa:{q:"Order PSA",a:"PSA 1.1 ng/mL — within normal limits for age.",tag:"norm",lbl:"PSA"}
+  },
+  img:{
+   ct:{q:"Order CT abdomen and pelvis without contrast",a:"5mm calculus identified at the right ureterovesical junction (UVJ). Mild right hydronephrosis and hydroureter proximal to the stone. No perinephric fat stranding.",tag:"crit",lbl:"CT Abdomen/Pelvis (non-contrast)"},
+   kub:{q:"Order KUB X-ray",a:"Faint calcification visible in the right lower pelvis. Limited sensitivity (~50%) compared to CT. Suggestive but not diagnostic.",tag:"res",lbl:"KUB X-ray (Kidney-Ureter-Bladder)"},
+   us:{q:"Order renal ultrasound",a:"Mild right hydronephrosis present. No stones directly visualized — ultrasound has poor sensitivity (~45%) for ureteral stones. Useful for ruling out other pathology.",tag:"res",lbl:"Renal ultrasound"},
+   cxr:{q:"Order chest X-ray",a:"No acute cardiopulmonary process. Normal.",tag:"norm",lbl:"Chest X-ray"}
+  }
+ },
+ {
+  id:4,title:"Case #4",cat:"GI / Hepatology",dif:"Advanced",maxSteps:14,
+  pt:{name:"Linda Zhao",age:45,sex:"Female",occ:"Accountant"},
+  cc:"Right upper quadrant pain, fever, and yellow skin for 2 days",
+  vitals:{BP:"102/68 mmHg",HR:"118 bpm",Temp:"103.2°F",SpO2:"97%",RR:"22/min"},
+  dx:"Ascending Cholangitis (Reynolds' Pentad)",
+  dxAliases:["ascending cholangitis","cholangitis","charcot","reynolds","biliary sepsis","choledocholithiasis with cholangitis"],
+  learn:"Charcot's triad (RUQ pain + fever/chills + jaundice) = ascending cholangitis until proven otherwise. Reynolds' pentad adds hypotension and altered mental status, indicating life-threatening sepsis requiring emergency ERCP. Blood cultures must be drawn BEFORE antibiotics. Biliary drainage via ERCP is the definitive treatment.",
+  path:["Recognize Charcot's triad — RUQ pain, fever, jaundice","LFTs + direct bilirubin — obstructive pattern","RUQ Ultrasound — biliary dilation and cholelithiasis","Blood cultures then IV broad-spectrum antibiotics","MRCP to confirm choledocholithiasis","Urgent ERCP for biliary decompression"],
+  hist:{
+   pain:{q:"Describe the RUQ pain",a:"Sharp, constant pain in my upper right abdomen radiating to my right shoulder. Started about 2 days ago — actually right after a large fatty meal.",tag:"crit",lbl:"RUQ pain character & radiation"},
+   jaundice:{q:"Tell me about the yellowing and urine color",a:"My skin and eyes turned yellow yesterday. Urine is dark — like iced tea or cola. My stools have been pale, almost clay-colored.",tag:"crit",lbl:"Jaundice / dark urine / pale stools"},
+   fever:{q:"Fever pattern and chills?",a:"High fever with violent shaking chills — rigors. I've never felt this sick before.",tag:"crit",lbl:"Fever pattern & rigors"},
+   ams:{q:"Any confusion or changes in mental status?",a:"My husband says I was confused this morning — not making sense, asking the same questions repeatedly.",tag:"crit",lbl:"Altered mental status / confusion"},
+   prior:{q:"Prior gallstone or biliary history?",a:"Was told I have gallstones 2 years ago on ultrasound but never followed up. I've had occasional RUQ discomfort after fatty meals for years.",tag:"res",lbl:"Prior gallstone history"},
+   diet:{q:"Recent dietary triggers?",a:"Ate a very large, fatty meal the evening before symptoms started.",tag:"res",lbl:"Dietary / fatty meal trigger"},
+   meds:{q:"Current medications?",a:"Oral contraceptives. Occasional ibuprofen for pain. No other medications.",tag:"res",lbl:"Current medications"},
+   family:{q:"Family history of gallstones or liver disease?",a:"My mother had her gallbladder out in her 40s.",tag:"res",lbl:"Family history (biliary)"},
+   alcohol:{q:"Alcohol use history?",a:"Socially — maybe 3–4 drinks per week. No heavy use.",tag:"res",lbl:"Alcohol history"},
+   travel:{q:"Any recent travel or sick contacts?",a:"No travel. No sick contacts. No raw seafood recently.",tag:"norm",lbl:"Travel / sick contacts / exposures"}
+  },
+  exam:{
+   abd:{q:"Perform abdominal exam",a:"Marked RUQ tenderness — patient winces on palpation. Positive Murphy's sign. Mild hepatomegaly. No peritoneal signs. Palpable distended gallbladder (Courvoisier's sign negative for malignancy context).",tag:"crit",lbl:"Abdominal exam (Murphy's sign)"},
+   jaun:{q:"Assess jaundice and skin",a:"Scleral icterus clearly present. Jaundice visible on skin, palms. No spider angiomata. No palmar erythema. No caput medusae.",tag:"crit",lbl:"Jaundice / skin assessment"},
+   gen:{q:"General appearance and hemodynamic assessment",a:"Ill-appearing, diaphoretic, visibly uncomfortable. Tachycardic (118 bpm). Hypotensive (102/68 mmHg). Alert but disoriented to time.",tag:"crit",lbl:"General appearance & hemodynamics"},
+   heart:{q:"Cardiac exam",a:"Tachycardic, regular rhythm. No murmurs. Peripheral pulses weak.",tag:"res",lbl:"Cardiac exam"},
+   pulm:{q:"Pulmonary exam",a:"Tachypneic. Lungs clear to auscultation. No crackles.",tag:"norm",lbl:"Pulmonary exam"}
+  },
+  labs:{
+   lft:{q:"Order LFTs",a:"AST 285, ALT 310 (both elevated). Total bilirubin 8.4 mg/dL; direct bilirubin 6.2 mg/dL. Alkaline phosphatase 420 (markedly elevated). GGT 380. Albumin 3.1 (low).",tag:"crit",lbl:"LFTs (Liver Function Tests)"},
+   cbc:{q:"Order CBC",a:"WBC 21.4 with 88% neutrophils and band forms. Hgb 12.1 (mild anemia). Platelets 98,000 (low).",tag:"crit",lbl:"CBC"},
+   bmp:{q:"Order BMP",a:"Cr 1.8 (elevated). Na 132, K 3.5. HCO3 19. Glucose 138.",tag:"res",lbl:"BMP"},
+   blood_cx:{q:"Order blood cultures",a:"Two sets obtained from separate sites. Gram-negative rods on preliminary smear. Final speciation pending.",tag:"crit",lbl:"Blood cultures (x2 sets)"},
+   coags:{q:"Order coagulation studies",a:"PT 18.2s, INR 1.6 (elevated). PTT 42s. Fibrinogen 180 (low-normal). D-dimer elevated.",tag:"crit",lbl:"Coagulation studies / DIC panel"},
+   lipase:{q:"Order lipase",a:"Lipase 68 U/L — within normal limits.",tag:"res",lbl:"Lipase"},
+   lactate:{q:"Order serum lactate",a:"Lactate 4.2 mmol/L (normal <2.0 mmol/L).",tag:"crit",lbl:"Serum lactate"}
+  },
+  img:{
+   ruq_us:{q:"Order RUQ ultrasound",a:"Multiple echogenic foci in the gallbladder with posterior shadowing. Common bile duct (CBD) diameter 13mm (upper limit of normal 6mm). Intrahepatic biliary ductal dilation. Gallbladder wall thickening at 5mm. No free fluid.",tag:"crit",lbl:"RUQ Ultrasound"},
+   mrcp:{q:"Order MRCP",a:"9mm hypointense filling defect in the distal common bile duct causing proximal ductal dilation. No pancreatic duct involvement. No mass lesion.",tag:"crit",lbl:"MRCP (MR Cholangiopancreatography)"},
+   ct:{q:"Order CT abdomen with contrast",a:"Biliary ductal dilation. Periportal edema. Gallbladder distension. No free perforation. No abscess.",tag:"res",lbl:"CT Abdomen/Pelvis with contrast"},
+   cxr:{q:"Order chest X-ray",a:"No pulmonary infiltrates. No pleural effusion. No pneumothorax.",tag:"norm",lbl:"Chest X-ray"}
+  }
+ }
+];
+
+// ── Universal Action Bank ──────────────────────────────────────────────────
+// These apply to every case. Case-specific answers always override these.
+const UNIVERSAL = {
+
+  // ── HISTORY ───────────────────────────────────────────────────────────────
+  hist: {
+    allergies:      { lbl:"Allergies", q:"Any known drug or food allergies?", a:"No known drug or food allergies. No environmental allergies reported.", tag:"norm" },
+    social:         { lbl:"Social history", q:"Tell me about your social history", a:"Lives at home. Non-smoker. Occasional alcohol. No illicit drug use. Works full time.", tag:"norm" },
+    surgical:       { lbl:"Surgical history", q:"Any prior surgeries or procedures?", a:"No prior surgeries or procedures.", tag:"norm" },
+    sexual:         { lbl:"Sexual history", q:"Are you sexually active? Any concerns?", a:"Sexually active, monogamous relationship. No concerns reported. No recent STI testing.", tag:"norm" },
+    travel2:        { lbl:"Travel history", q:"Any recent travel abroad?", a:"No recent international travel. No known sick contacts.", tag:"norm" },
+    immunisation:   { lbl:"Vaccination history", q:"Are your vaccinations up to date?", a:"Vaccinations up to date including influenza and COVID-19 booster.", tag:"norm" },
+    weight:         { lbl:"Weight changes", q:"Any recent weight loss or gain?", a:"Weight stable over the past several months. No intentional dietary changes.", tag:"norm" },
+    appetite:       { lbl:"Appetite changes", q:"Any changes in appetite?", a:"Appetite normal. No anorexia or early satiety.", tag:"norm" },
+    sleep:          { lbl:"Sleep history", q:"How has your sleep been?", a:"Sleep adequate, approximately 7 hours per night. No insomnia or hypersomnia.", tag:"norm" },
+    fatigue:        { lbl:"Fatigue", q:"Have you been feeling fatigued or tired?", a:"Some fatigue reported in context of current illness, otherwise baseline energy normal.", tag:"norm" },
+    occupational:   { lbl:"Occupational history", q:"Any occupational exposures or hazards?", a:"No significant occupational exposures to toxins, asbestos, or chemicals.", tag:"norm" },
+    functional:     { lbl:"Functional status", q:"How has your day-to-day functioning been?", a:"Fully independent with all activities of daily living prior to this illness.", tag:"norm" },
+    review_systems: { lbl:"Full review of systems", q:"Any other symptoms I should know about?", a:"Otherwise negative review of systems. No rashes, no joint pain, no urinary symptoms beyond those already discussed.", tag:"norm" },
+  },
+
+  // ── PHYSICAL EXAM ─────────────────────────────────────────────────────────
+  exam: {
+    general:        { lbl:"General appearance", q:"General appearance assessment", a:"Alert and oriented x3. In visible discomfort related to presenting complaint. No acute distress beyond current illness.", tag:"norm" },
+    heent:          { lbl:"HEENT exam", q:"Perform HEENT exam", a:"Head normocephalic, atraumatic. Eyes: PERRL, EOMI, no icterus. Ears: TMs intact bilaterally. Nose: no discharge. Throat: no erythema or exudate. Neck: no lymphadenopathy.", tag:"norm" },
+    lymph:          { lbl:"Lymph node exam", q:"Examine lymph nodes", a:"No cervical, axillary, or inguinal lymphadenopathy palpated.", tag:"norm" },
+    thyroid:        { lbl:"Thyroid exam", q:"Examine the thyroid", a:"Thyroid gland non-enlarged, non-tender. No palpable nodules.", tag:"norm" },
+    breast:         { lbl:"Breast exam", q:"Perform breast exam", a:"No masses, tenderness, or skin changes. No nipple discharge.", tag:"norm" },
+    rectal:         { lbl:"Rectal exam", q:"Perform digital rectal exam", a:"Normal anal tone. No masses. No blood on glove. Prostate normal size and consistency if applicable.", tag:"norm" },
+    musculo:        { lbl:"Musculoskeletal exam", q:"Musculoskeletal exam", a:"Full range of motion in all major joints. No synovitis, effusions, or bony tenderness. Normal gait.", tag:"norm" },
+    peripheral_vas: { lbl:"Peripheral vascular exam", q:"Peripheral vascular exam", a:"Peripheral pulses 2+ and symmetric bilaterally. No peripheral oedema. Capillary refill <2 seconds.", tag:"norm" },
+    resp_exam:      { lbl:"Respiratory exam", q:"Respiratory exam", a:"Trachea central. Chest expansion symmetric. Percussion resonant throughout. Breath sounds vesicular, no added sounds.", tag:"norm" },
+    mental_status:  { lbl:"Mental status exam", q:"Full mental status examination", a:"Alert, oriented to person, place, time, and situation. Speech fluent and coherent. Affect appropriate. Thought process linear. No hallucinations or delusions elicited.", tag:"norm" },
+    cranial_nerves: { lbl:"Cranial nerve exam", q:"Test cranial nerves I-XII", a:"CN I: not formally tested. CN II: visual acuity and fields intact. CN III/IV/VI: EOMI, no ptosis. CN V: facial sensation intact. CN VII: face symmetric. CN VIII: hearing intact. CN IX/X: gag intact. CN XI: shoulder shrug strong. CN XII: tongue midline.", tag:"norm" },
+    cerebellar:     { lbl:"Cerebellar exam", q:"Cerebellar exam", a:"Finger-nose-finger intact bilaterally. Heel-shin intact. Rapid alternating movements normal. Romberg negative.", tag:"norm" },
+    reflexes:       { lbl:"Deep tendon reflexes", q:"Check deep tendon reflexes", a:"DTRs 2+ and symmetric at biceps, triceps, brachioradialis, patella, and Achilles. Plantar responses flexor bilaterally.", tag:"norm" },
+  },
+
+  // ── LABS ──────────────────────────────────────────────────────────────────
+  labs: {
+    // Haematology
+    cbc_diff:       { lbl:"CBC with differential", q:"Order CBC with differential", a:"WBC 7.2 (normal). Neutrophils 62%, Lymphocytes 28%, Monocytes 7%, Eosinophils 2%, Basophils 1%. Hgb 14.0, MCV 88, Plt 240. No left shift.", tag:"norm" },
+    esr:            { lbl:"ESR (Erythrocyte sedimentation rate)", q:"Order ESR", a:"ESR 18 mm/hr — within normal limits.", tag:"norm" },
+    crp:            { lbl:"CRP (C-reactive protein)", q:"Order CRP", a:"CRP 4.2 mg/L — mildly elevated, consistent with acute physiological stress response.", tag:"res" },
+    blood_film:     { lbl:"Peripheral blood film", q:"Order peripheral blood film", a:"Normochromic normocytic red cells. No blast cells, schistocytes, or abnormal white cell morphology. Platelets adequate on smear.", tag:"norm" },
+    reticulocyte:   { lbl:"Reticulocyte count", q:"Order reticulocyte count", a:"Reticulocyte count 1.2% — normal. No evidence of haemolysis or compensatory erythropoiesis.", tag:"norm" },
+
+    // Metabolic / Chemistry
+    lft2:           { lbl:"LFTs (Liver function tests)", q:"Order liver function tests", a:"ALT 28, AST 24, ALP 72, GGT 38, Total bilirubin 0.8 mg/dL, Albumin 4.1 g/dL. All within normal limits.", tag:"norm" },
+    tft:            { lbl:"TFTs (Thyroid function tests)", q:"Order thyroid function tests", a:"TSH 2.1 mIU/L (normal 0.4–4.0). Free T4 1.2 ng/dL (normal). No thyroid dysfunction.", tag:"norm" },
+    lipase2:        { lbl:"Lipase", q:"Order lipase", a:"Lipase 42 U/L — within normal limits. No evidence of pancreatic inflammation.", tag:"norm" },
+    amylase:        { lbl:"Amylase", q:"Order amylase", a:"Amylase 68 U/L — within normal limits.", tag:"norm" },
+    uric_acid:      { lbl:"Uric acid", q:"Order uric acid level", a:"Uric acid 5.8 mg/dL — within normal limits.", tag:"norm" },
+    iron_studies:   { lbl:"Iron studies", q:"Order iron studies", a:"Serum iron 88 mcg/dL, Ferritin 62 ng/mL, TIBC 320 mcg/dL, Transferrin saturation 28%. All within normal limits.", tag:"norm" },
+    b12_folate:     { lbl:"B12 and folate", q:"Order B12 and folate levels", a:"Vitamin B12 420 pg/mL (normal). Folate 8.2 ng/mL (normal). No deficiency.", tag:"norm" },
+    hba1c:          { lbl:"HbA1c", q:"Order HbA1c", a:"HbA1c 5.4% — normal. No evidence of diabetes or pre-diabetes.", tag:"norm" },
+    glucose2:       { lbl:"Random blood glucose", q:"Order random blood glucose", a:"Random glucose 98 mg/dL — within normal limits.", tag:"norm" },
+    calcium:        { lbl:"Calcium (serum)", q:"Order serum calcium", a:"Total calcium 9.2 mg/dL — normal. Ionised calcium 1.18 mmol/L — normal.", tag:"norm" },
+    phosphate:      { lbl:"Phosphate", q:"Order serum phosphate", a:"Phosphate 3.4 mg/dL — within normal limits.", tag:"norm" },
+    magnesium:      { lbl:"Magnesium", q:"Order serum magnesium", a:"Magnesium 2.0 mg/dL — within normal limits.", tag:"norm" },
+    albumin2:       { lbl:"Albumin", q:"Order serum albumin", a:"Albumin 4.2 g/dL — normal. No hypoalbuminaemia.", tag:"norm" },
+    protein_total:  { lbl:"Total protein", q:"Order total protein", a:"Total protein 7.1 g/dL — within normal limits.", tag:"norm" },
+
+    // Cardiac
+    troponin2:      { lbl:"Troponin I", q:"Order troponin I", a:"Troponin I <0.01 ng/mL — within normal limits. No evidence of myocardial injury.", tag:"norm" },
+    bnp2:           { lbl:"BNP / NT-proBNP", q:"Order BNP", a:"BNP 42 pg/mL — within normal limits. No evidence of elevated cardiac filling pressures.", tag:"norm" },
+    ck:             { lbl:"CK (Creatine kinase)", q:"Order creatine kinase", a:"CK 88 U/L — within normal limits. No rhabdomyolysis.", tag:"norm" },
+    ck_mb:          { lbl:"CK-MB", q:"Order CK-MB", a:"CK-MB 2.1 ng/mL — within normal limits.", tag:"norm" },
+
+    // Respiratory / ABG
+    abg:            { lbl:"ABG (Arterial blood gas)", q:"Order arterial blood gas", a:"pH 7.41, PaO2 96 mmHg, PaCO2 39 mmHg, HCO3 24 mEq/L, SaO2 98%. Normal acid-base status. Adequate oxygenation on room air.", tag:"norm" },
+    d_dimer:        { lbl:"D-dimer", q:"Order D-dimer", a:"D-dimer 0.3 mg/L FEU — within normal limits. Low probability of thromboembolic disease.", tag:"norm" },
+    bnp3:           { lbl:"Pro-BNP", q:"Order NT-proBNP", a:"NT-proBNP 88 pg/mL — within normal limits.", tag:"norm" },
+
+    // Infection / Inflammation
+    procalcitonin:  { lbl:"Procalcitonin", q:"Order procalcitonin", a:"Procalcitonin 0.08 ng/mL — within normal limits. Low suspicion for bacterial sepsis.", tag:"norm" },
+    mono_spot:      { lbl:"Monospot test", q:"Order monospot test", a:"Monospot test negative. No evidence of infectious mononucleosis.", tag:"norm" },
+    hiv:            { lbl:"HIV test", q:"Order HIV test", a:"HIV Ag/Ab combo test negative.", tag:"norm" },
+    hepatitis:      { lbl:"Hepatitis panel", q:"Order hepatitis panel", a:"HBsAg negative. HBsAb positive (immune). HCV Ab negative. HAV Ab IgM negative.", tag:"norm" },
+    covid:          { lbl:"COVID-19 test", q:"Order COVID-19 test", a:"SARS-CoV-2 PCR negative.", tag:"norm" },
+    blood_cx2:      { lbl:"Blood cultures", q:"Order blood cultures", a:"Two sets obtained. No growth at 24 hours. Pending final result at 48–72 hours.", tag:"norm" },
+    urine_cx2:      { lbl:"Urine culture", q:"Order urine culture", a:"No growth on preliminary smear. Culture pending. No evidence of urinary tract infection.", tag:"norm" },
+    sputum_cx:      { lbl:"Sputum culture", q:"Order sputum culture", a:"Sputum sample obtained. No organisms on gram stain. Culture pending.", tag:"norm" },
+    throat_swab:    { lbl:"Throat swab", q:"Order throat swab", a:"Throat swab negative for Group A Streptococcus. Viral culture pending.", tag:"norm" },
+
+    // Endocrine
+    cortisol:       { lbl:"Cortisol level", q:"Order serum cortisol", a:"Morning cortisol 18 mcg/dL — within normal limits.", tag:"norm" },
+    pth:            { lbl:"PTH (Parathyroid hormone)", q:"Order PTH level", a:"PTH 38 pg/mL — within normal limits.", tag:"norm" },
+    vitamin_d:      { lbl:"Vitamin D level", q:"Order vitamin D (25-OH)", a:"25-hydroxyvitamin D 32 ng/mL — sufficient.", tag:"norm" },
+
+    // Urine
+    ua2:            { lbl:"Urinalysis (UA)", q:"Order urinalysis", a:"Clear, yellow urine. pH 6.0. Specific gravity 1.018. No blood, protein, glucose, nitrites, or leucocyte esterase. Microscopy: <5 RBCs/hpf, <5 WBCs/hpf. Normal.", tag:"norm" },
+    urine_protein:  { lbl:"Urine protein:creatinine ratio", q:"Order urine protein:creatinine ratio", a:"Urine protein:creatinine ratio 0.08 — within normal limits. No significant proteinuria.", tag:"norm" },
+    urine_micro:    { lbl:"Urine microscopy", q:"Order urine microscopy", a:"No casts, no dysmorphic red cells, no organisms. <5 RBCs/hpf and <5 WBCs/hpf. Normal.", tag:"norm" },
+
+    // Haematology / Coags
+    coags2:         { lbl:"Coagulation studies", q:"Order coagulation studies", a:"PT 11.8s, INR 1.0, PTT 26s, Fibrinogen 320 mg/dL. All within normal limits. No coagulopathy.", tag:"norm" },
+    blood_group:    { lbl:"Blood group and screen", q:"Order blood group and screen", a:"Blood group O positive. Antibody screen negative.", tag:"norm" },
+
+    // Tumour markers
+    psa2:           { lbl:"PSA (Prostate specific antigen)", q:"Order PSA", a:"PSA 1.2 ng/mL — within normal limits for age.", tag:"norm" },
+    cea:            { lbl:"CEA (Carcinoembryonic antigen)", q:"Order CEA", a:"CEA 2.1 ng/mL — within normal limits.", tag:"norm" },
+    afp:            { lbl:"AFP (Alpha-fetoprotein)", q:"Order AFP", a:"AFP 4.8 ng/mL — within normal limits.", tag:"norm" },
+    ca125:          { lbl:"CA-125", q:"Order CA-125", a:"CA-125 18 U/mL — within normal limits.", tag:"norm" },
+
+    // Toxicology
+    tox_screen:     { lbl:"Urine toxicology screen", q:"Order urine toxicology screen", a:"Urine drug screen negative for opioids, benzodiazepines, cocaine, amphetamines, THC, and PCP.", tag:"norm" },
+    ethanol:        { lbl:"Serum ethanol level", q:"Order serum ethanol level", a:"Serum ethanol undetectable.", tag:"norm" },
+    paracetamol:    { lbl:"Paracetamol level", q:"Order paracetamol (acetaminophen) level", a:"Paracetamol level undetectable. No hepatotoxic risk.", tag:"norm" },
+    salicylate:     { lbl:"Salicylate level", q:"Order salicylate level", a:"Salicylate level undetectable.", tag:"norm" },
+  },
+
+  // ── IMAGING ───────────────────────────────────────────────────────────────
+  img: {
+    ct_chest:       { lbl:"CT Chest", q:"Order CT chest", a:"No pulmonary embolism. No pneumonia or consolidation. No pleural effusion. No pneumothorax. Mediastinum normal. No hilar lymphadenopathy. Normal study.", tag:"norm" },
+    ct_head2:       { lbl:"CT Head (non-contrast)", q:"Order CT head non-contrast", a:"No intracranial haemorrhage. No midline shift. No hydrocephalus. Grey-white matter differentiation preserved. No acute territorial infarct. Normal study.", tag:"norm" },
+    ct_abdo:        { lbl:"CT Abdomen/Pelvis", q:"Order CT abdomen and pelvis", a:"No acute intra-abdominal pathology. Solid organs unremarkable. No free air or free fluid. No lymphadenopathy. Appendix visualised and normal. Normal study.", tag:"norm" },
+    ct_abdo_con:    { lbl:"CT Abdomen/Pelvis with contrast", q:"Order CT abdomen/pelvis with contrast", a:"No acute intra-abdominal pathology identified. Liver, spleen, pancreas, and kidneys enhance normally. No vascular abnormality. No free fluid. Normal study.", tag:"norm" },
+    ctpa:           { lbl:"CTPA (CT Pulmonary Angiography)", q:"Order CT pulmonary angiography", a:"No filling defect in the main, lobar, segmental, or subsegmental pulmonary arteries. No evidence of pulmonary embolism. Lungs clear.", tag:"norm" },
+    ct_spine:       { lbl:"CT Spine", q:"Order CT spine", a:"No fracture or dislocation. Vertebral body heights and alignment maintained. No significant canal stenosis at any level.", tag:"norm" },
+    ct_kub:         { lbl:"CT KUB (non-contrast)", q:"Order CT KUB non-contrast", a:"No renal calculi identified. No ureteric calculi. No hydronephrosis. Kidneys normal in size and morphology. Bladder unremarkable.", tag:"norm" },
+    cta_head:       { lbl:"CTA Head/Neck", q:"Order CTA head and neck", a:"No intracranial aneurysm. No arteriovenous malformation. No significant stenosis of the carotid or vertebral arteries. Normal study.", tag:"norm" },
+    cxr2:           { lbl:"Chest X-ray", q:"Order chest X-ray", a:"Heart size normal. Lung fields clear. No consolidation, effusion, or pneumothorax. Bony thorax intact. No mediastinal widening. Normal study.", tag:"norm" },
+    mri_brain2:     { lbl:"MRI Brain", q:"Order MRI brain", a:"No intracranial mass, haemorrhage, or acute infarct. White matter signal normal. Ventricles normal in size. No restricted diffusion on DWI. Normal study.", tag:"norm" },
+    mri_spine:      { lbl:"MRI Spine", q:"Order MRI spine", a:"No cord compression or signal abnormality. Disc heights maintained. No significant foraminal stenosis. No epidural collection.", tag:"norm" },
+    mri_abdo:       { lbl:"MRI Abdomen", q:"Order MRI abdomen", a:"No hepatic, splenic, pancreatic, or renal lesion identified. Biliary system normal calibre. No ascites. Normal study.", tag:"norm" },
+    echo2:          { lbl:"Echocardiogram", q:"Order echocardiogram", a:"Normal left ventricular size and function. EF estimated 60–65%. No wall motion abnormalities. No significant valvular disease. No pericardial effusion. Normal diastolic function.", tag:"norm" },
+    echo_stress:    { lbl:"Stress echocardiogram", q:"Order stress echocardiogram", a:"No inducible wall motion abnormality at peak stress. Normal blood pressure and heart rate response. No significant arrhythmia. Low likelihood of obstructive coronary artery disease.", tag:"norm" },
+    us_abdo:        { lbl:"Abdominal ultrasound", q:"Order abdominal ultrasound", a:"Liver normal echogenicity and size. No focal hepatic lesion. Gallbladder normal, no stones. Common bile duct 4mm (normal). Spleen normal. Kidneys normal. No free fluid.", tag:"norm" },
+    us_renal2:      { lbl:"Renal ultrasound", q:"Order renal ultrasound", a:"Both kidneys normal in size and echogenicity. No hydronephrosis. No renal calculi identified on ultrasound. Bladder normal.", tag:"norm" },
+    us_thyroid:     { lbl:"Thyroid ultrasound", q:"Order thyroid ultrasound", a:"Thyroid gland normal in size and echogenicity. No nodules. No increased vascularity. Normal study.", tag:"norm" },
+    us_dvt:         { lbl:"Lower limb DVT ultrasound", q:"Order lower limb Doppler ultrasound", a:"Bilateral lower limb veins fully compressible. Normal flow pattern. No evidence of deep vein thrombosis.", tag:"norm" },
+    us_pelvis:      { lbl:"Pelvic ultrasound", q:"Order pelvic ultrasound", a:"Uterus normal size and morphology. Endometrial thickness appropriate. Ovaries normal bilaterally. No free fluid in the pelvis. Normal study.", tag:"norm" },
+    ecg2:           { lbl:"ECG (12-lead)", q:"Order 12-lead ECG", a:"Sinus rhythm at 74 bpm. Normal axis. PR interval 160ms. QRS 88ms. QTc 420ms. No ST changes. No T-wave inversion. No left ventricular hypertrophy. Normal ECG.", tag:"norm" },
+    xr_abdo:        { lbl:"Abdominal X-ray (AXR)", q:"Order abdominal X-ray", a:"No free air under the diaphragm. Bowel gas pattern normal. No obstruction or volvulus. No radio-opaque calculi. Normal study.", tag:"norm" },
+    xr_spine:       { lbl:"Spine X-ray", q:"Order spine X-ray", a:"Vertebral body heights and alignment maintained. No acute fracture. Mild age-appropriate degenerative changes. No spondylolisthesis.", tag:"norm" },
+    xr_limb:        { lbl:"Limb X-ray", q:"Order limb X-ray", a:"No acute fracture or dislocation. Bony cortex intact. No periosteal reaction. Joint spaces preserved. Soft tissues unremarkable.", tag:"norm" },
+    mammogram:      { lbl:"Mammogram", q:"Order mammogram", a:"No suspicious mass, calcification, or architectural distortion identified. Normal mammogram — BI-RADS 1.", tag:"norm" },
+    nuclear_stress: { lbl:"Nuclear stress test", q:"Order nuclear stress test", a:"Normal myocardial perfusion at rest and stress. No fixed or reversible perfusion defect. Normal left ventricular function. Low likelihood of significant coronary artery disease.", tag:"norm" },
+    pet_ct:         { lbl:"PET-CT", q:"Order PET-CT scan", a:"No hypermetabolic lesion identified to suggest active malignancy, infection, or inflammation. Normal distribution of FDG tracer.", tag:"norm" },
+    bone_scan:      { lbl:"Bone scan", q:"Order bone scan", a:"No area of increased or decreased tracer uptake to suggest bony metastasis, fracture, or osteomyelitis. Normal bone scan.", tag:"norm" },
+    angio:          { lbl:"Conventional angiography", q:"Order conventional angiography", a:"No significant arterial stenosis or occlusion identified. No aneurysm. No arteriovenous malformation. Normal vascular anatomy.", tag:"norm" },
+
+    // ── PROCEDURES ──────────────────────────────────────────────────────────
+    lp2:            { lbl:"Lumbar puncture (CSF)", q:"Perform lumbar puncture", a:"Opening pressure 14 cmH2O (normal). CSF clear and colourless. RBCs 0/mm³. WBCs 3/mm³ (normal). Protein 38 mg/dL (normal). Glucose 62 mg/dL (normal). No organisms on gram stain. Normal CSF.", tag:"norm" },
+    thoracentesis:  { lbl:"Thoracentesis", q:"Perform thoracentesis", a:"No pleural effusion identified on pre-procedure ultrasound. Procedure deferred — no indication at this time.", tag:"norm" },
+    paracentesis:   { lbl:"Paracentesis", q:"Perform paracentesis", a:"No ascites identified on clinical exam or pre-procedure ultrasound. Procedure deferred — no indication at this time.", tag:"norm" },
+    joint_aspir:    { lbl:"Joint aspiration", q:"Perform joint aspiration", a:"No significant joint effusion identified. Aspiration deferred. If clinically indicated, targeted joint should be specified.", tag:"norm" },
+
+    // ── BIOPSIES ────────────────────────────────────────────────────────────
+    biopsy_liver:   { lbl:"Liver biopsy", q:"Order liver biopsy", a:"Liver biopsy not indicated acutely in this presentation. Hepatic parenchyma appears normal on imaging. Consider if chronic liver disease, unexplained hepatitis, or infiltrative process is suspected after non-invasive workup is complete.", tag:"norm" },
+    biopsy_renal:   { lbl:"Renal biopsy", q:"Order renal biopsy", a:"Renal biopsy not indicated at this stage. Renal function and urinalysis within normal limits. Consider if nephrotic syndrome, unexplained AKI, or glomerulonephritis is suspected.", tag:"norm" },
+    biopsy_bone:    { lbl:"Bone marrow biopsy", q:"Order bone marrow biopsy", a:"Bone marrow biopsy not indicated in this presentation. Blood counts within normal limits. Consider if haematological malignancy, unexplained cytopaenia, or staging of lymphoma is suspected.", tag:"norm" },
+    biopsy_lymph:   { lbl:"Lymph node biopsy", q:"Order lymph node biopsy", a:"No lymphadenopathy identified on examination or imaging. Biopsy deferred. Consider if persistent unexplained lymphadenopathy or lymphoma is suspected.", tag:"norm" },
+    biopsy_skin:    { lbl:"Skin biopsy", q:"Order skin biopsy", a:"No suspicious skin lesion identified warranting biopsy at this time. Consider if vasculitic, bullous, or neoplastic skin lesion is present.", tag:"norm" },
+    biopsy_temporal:{ lbl:"Temporal artery biopsy", q:"Order temporal artery biopsy", a:"Temporal artery biopsy not indicated in this presentation. No clinical features of giant cell arteritis. Consider if new headache with jaw claudication, visual symptoms, or elevated inflammatory markers in patient >50 years.", tag:"norm" },
+    biopsy_lung:    { lbl:"Lung biopsy", q:"Order lung biopsy", a:"Lung biopsy not indicated at this time. No pulmonary lesion identified on imaging. Consider bronchoscopy or CT-guided biopsy if pulmonary mass or interstitial lung disease is present.", tag:"norm" },
+    biopsy_gi:      { lbl:"GI biopsy (endoscopic)", q:"Order GI biopsy via endoscopy", a:"Endoscopic biopsy not indicated acutely. Consider if IBD, coeliac disease, or GI malignancy is suspected after appropriate endoscopic evaluation.", tag:"norm" },
+    biopsy_prostate:{ lbl:"Prostate biopsy", q:"Order prostate biopsy", a:"Prostate biopsy not indicated. PSA within normal limits and no suspicious lesion on imaging. Consider if PSA elevated or abnormal digital rectal exam.", tag:"norm" },
+    colonoscopy:    { lbl:"Colonoscopy", q:"Order colonoscopy", a:"Colonoscopy not indicated acutely. No lower GI symptoms or rectal bleeding reported. Consider electively if colorectal malignancy, IBD, or polyp surveillance is indicated.", tag:"norm" },
+    endoscopy:      { lbl:"Upper GI endoscopy (OGD)", q:"Order upper GI endoscopy", a:"Upper GI endoscopy not indicated acutely in this presentation. No haematemesis, dysphagia, or alarm features. Consider if peptic ulcer disease, GORD, or upper GI malignancy is suspected.", tag:"norm" },
+    bronchoscopy:   { lbl:"Bronchoscopy", q:"Order bronchoscopy", a:"Bronchoscopy not indicated at this time. No endobronchial lesion or significant airway pathology suspected. Consider if persistent unexplained haemoptysis or central pulmonary mass is identified.", tag:"norm" },
+    ercp2:          { lbl:"ERCP", q:"Order ERCP", a:"ERCP not indicated at this time. No biliary obstruction or choledocholithiasis identified on imaging. Consider if obstructive jaundice with ductal dilation or choledocholithiasis is confirmed.", tag:"norm" },
+  }
+};
+
+// ── Merge universal bank with case-specific actions ───────────────────────
+function getMergedActions(caseObj) {
+  const merged = { hist:{}, exam:{}, labs:{}, img:{} };
+  ['hist','exam','labs','img'].forEach(grp => {
+    // Universal defaults first
+    Object.entries(UNIVERSAL[grp]||{}).forEach(([k,v]) => { merged[grp][k] = v; });
+    // Case-specific overrides (always win)
+    Object.entries(caseObj[grp]||{}).forEach(([k,v]) => { merged[grp][k] = v; });
+  });
+  return merged;
+}
+
+
+// ── State ──────────────────────────────────────────────────────────────────
+let cc = null, used = new Set(), dAttempts = 0;
+let allActions = [], selIdx = -1;
+
+// ── Messaging ──────────────────────────────────────────────────────────────
+function addMsg(type, label, text, style) {
+  const tl = document.getElementById('tl');
+  const d = document.createElement('div'); d.className = 'msg';
+  const ac = type==='user' ? 'av-u' : (style==='crit' ? 'av-c' : 'av-s');
+  const at = type==='user' ? 'MD' : (style==='crit' ? '!' : 'RX');
+  d.innerHTML = `<div class="avatar ${ac}">${at}</div><div class="mb"><div class="mlbl">${label}</div><div class="mt ${style||''}">${text}</div></div>`;
+  tl.appendChild(d);
+  tl.scrollTop = tl.scrollHeight;
+}
+
+// ── Step counter ───────────────────────────────────────────────────────────
+function consumeStep() {
+  cc.stepsUsed++;
+  const left = cc.maxSteps - cc.stepsUsed;
+  document.getElementById('stL').textContent = left;
+  const pct = left / cc.maxSteps * 100;
+  const pb = document.getElementById('pb');
+  pb.style.width = pct + '%';
+  pb.style.background = pct > 50 ? '#185FA5' : pct > 25 ? '#BA7517' : '#E24B4A';
+  if (left <= 0) {
+    document.getElementById('searchInput').disabled = true;
+    addMsg('system', 'System', 'No steps remaining. Submit your final diagnosis.', 'warn');
+  }
+}
+
+// ── Notes panel ────────────────────────────────────────────────────────────
+const NOTE_IDS = { hist:'nHist', exam:'nExam', labs:'nLabs', img:'nImg' };
+
+function addNoteEntry(group, entry) {
+  const el = document.getElementById(NOTE_IDS[group]); if (!el) return;
+  const empty = el.querySelector('.notes-empty'); if (empty) empty.remove();
+  let summary = entry.a.split('. ').slice(0, 2).join('. ').trim();
+  if (summary.length > 130) summary = summary.slice(0, 127) + '…';
+  if (entry.tag === 'crit') {
+    summary = summary.replace(/(POSITIVE|CRITICAL|ELEVATED|CONFIRMATORY|DIAGNOSTIC|STEMI|SAH|HEMATURIA|XANTHOCHROMIC|LEUKOCYTOSIS|ACTIVATE|MARKEDLY|OBSTRUC\w*)/gi,
+      '<span style="color:#A32D2D;font-weight:700">$1</span>');
+  }
+  const row = document.createElement('div'); row.className = 'note-entry';
+  row.innerHTML = `<div class="note-dot ${entry.tag||'res'}"></div><div class="note-text"><strong>${entry.lbl}:</strong> ${summary}</div>`;
+  el.appendChild(row);
+  document.querySelector('.notes-body').scrollTop = 9999;
+}
+
+function initNotes() {
+  document.getElementById('nVitals').innerHTML = Object.entries(cc.vitals).map(([k,v]) =>
+    `<div class="note-entry"><div class="note-dot norm"></div><div class="note-text"><strong>${k}:</strong> ${v}</div></div>`
+  ).join('');
+  const placeholders = {nHist:'None taken yet', nExam:'None performed yet', nLabs:'None ordered yet', nImg:'None ordered yet'};
+  Object.entries(placeholders).forEach(([id, txt]) => {
+    document.getElementById(id).innerHTML = `<span class="notes-empty">${txt}</span>`;
+  });
+}
+
+// ── Action execution ───────────────────────────────────────────────────────
+function tap(key, group) {
+  if (used.has(key) || cc.stepsUsed >= cc.maxSteps) return;
+  const merged = getMergedActions(cc);
+  const srcs = merged;
+  const entry = srcs[group]?.[key]; if (!entry) return;
+  used.add(key);
+  closeSug();
+  addMsg('user', 'You', entry.q, 'act');
+  setTimeout(() => {
+    addMsg('system', 'Chart', entry.a, entry.tag || 'res');
+    addNoteEntry(group, entry);
+    consumeStep();
+    buildActionIndex();
+  }, 350);
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────
+function buildActionIndex() {
+  allActions = [];
+  const merged = getMergedActions(cc);
+  [['hist','History'],['exam','Exam'],['labs','Labs'],['img','Imaging']].forEach(([grp, cat]) => {
+    Object.entries(merged[grp]).forEach(([k, v]) => {
+      if (!used.has(k)) allActions.push({
+        key:k, group:grp, label:v.lbl||k, cat,
+        search: [(v.lbl||k), (v.q||''), (v.a||''), cat].join(' ').toLowerCase()
+      });
+    });
+  });
+}
+
+function scoreMatch(action, q) {
+  if (!q) return 1;
+  const s = action.search;
+  if (action.label.toLowerCase().includes(q)) return 100;
+  if (s.includes(q)) return 80;
+  const words = q.split(/\s+/).filter(w => w.length >= 2);
+  if (words.length > 1 && words.every(w => s.includes(w))) return 60;
+  if (words.filter(w => w.length >= 3).some(w => s.includes(w))) return 30;
+  return 0;
+}
+
+function highlight(str, q) {
+  if (!q) return str;
+  const i = str.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return str;
+  return str.slice(0,i) + '<em>' + str.slice(i, i+q.length) + '</em>' + str.slice(i+q.length);
+}
+
+function renderSug(query) {
+  const sug = document.getElementById('sugList');
+  const q = (query||'').trim().toLowerCase();
+  const scored = allActions
+    .map(a => ({ ...a, score: scoreMatch(a, q) }))
+    .filter(a => a.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+  if (!scored.length) { sug.className = 'suggestions'; selIdx = -1; return; }
+  sug.innerHTML = scored.map(m =>
+    `<div class="sug-item" data-key="${m.key}" data-group="${m.group}">
+      <span>${highlight(m.label, query||'')}</span>
+      <span class="sug-cat">${m.cat}</span>
+    </div>`
+  ).join('');
+  sug.querySelectorAll('.sug-item').forEach(el => {
+    el.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      tap(el.dataset.key, el.dataset.group);
+      document.getElementById('searchInput').value = '';
+    });
+  });
+  selIdx = -1;
+  sug.className = 'suggestions open';
+}
+
+function closeSug() {
+  document.getElementById('sugList').className = 'suggestions';
+  selIdx = -1;
+}
+function moveSel(dir) {
+  const sug = document.getElementById('sugList');
+  const items = sug.querySelectorAll('.sug-item');
+  if (!items.length) return;
+  items[selIdx]?.classList.remove('sel');
+  selIdx = Math.max(-1, Math.min(items.length - 1, selIdx + dir));
+  if (selIdx >= 0) items[selIdx].classList.add('sel');
+}
+
+document.getElementById('searchInput').addEventListener('focus', function() { renderSug(this.value); });
+document.getElementById('searchInput').addEventListener('input', function() { renderSug(this.value); });
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowDown') { e.preventDefault(); moveSel(1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); moveSel(-1); }
+  else if (e.key === 'Enter') {
+    e.preventDefault();
+    const items = document.getElementById('sugList').querySelectorAll('.sug-item');
+    const target = selIdx >= 0 ? items[selIdx] : items[0];
+    if (target) { tap(target.dataset.key, target.dataset.group); this.value = ''; }
+  } else if (e.key === 'Escape') { closeSug(); }
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.bottom-bar')) closeSug();
+});
+
+// ── Diagnosis ──────────────────────────────────────────────────────────────
+function doDiag() {
+  const inp = document.getElementById('diagInput');
+  const v = inp.value.trim(); if (!v || dAttempts >= cc.maxDiag) return;
+  inp.value = ''; dAttempts++;
+  updateDots();
+  const guess = v.toLowerCase().trim();
+  const targets = [cc.dx.toLowerCase(), ...(cc.dxAliases||[])];
+  const correct = targets.some(target => {
+    if (guess === target) return true;
+    if (target.includes(guess) || guess.includes(target)) return true;
+    const gw = guess.split(/[\s,()\/\-]+/).filter(w=>w.length>=3);
+    const tw = target.split(/[\s,()\/\-]+/).filter(w=>w.length>=3);
+    return gw.some(w=>target.includes(w)) || tw.some(w=>guess.includes(w));
+  });
+  if (correct) {
+    addMsg('user','Your diagnosis',v,'norm');
+    addMsg('system','Evaluation','Correct! Well reasoned.','norm');
+    cc.diagAttempts = dAttempts;
+    setTimeout(()=>showEnd(true), 600);
+  } else if (dAttempts >= cc.maxDiag) {
+    addMsg('user','Your diagnosis',v,'res');
+    addMsg('system','Evaluation','Incorrect — no attempts remaining.','crit');
+    cc.diagAttempts = dAttempts;
+    setTimeout(()=>showEnd(false), 600);
+  } else {
+    addMsg('user','Your diagnosis',v,'res');
+    const rem = cc.maxDiag - dAttempts;
+    addMsg('system','Evaluation',`Not the primary diagnosis. ${rem} attempt${rem>1?'s':''} remaining.`,'res');
+    document.getElementById('dgL').textContent = rem;
+  }
+}
+document.getElementById('diagInput').addEventListener('keydown', e => { if(e.key==='Enter') doDiag(); });
+
+function updateDots() {
+  document.querySelectorAll('.adot').forEach((d,i) => {
+    d.className = 'adot';
+    if (i < dAttempts) d.classList.add('used');
+    else if (i < cc.maxDiag) d.classList.add('on');
+  });
+  if (dAttempts >= cc.maxDiag) {
+    document.getElementById('diagBtn').disabled = true;
+    document.getElementById('diagInput').disabled = true;
+  }
+}
+
+// ── Scoring ────────────────────────────────────────────────────────────────
+function calcScore(correct) {
+  if (!correct) return Math.max(10, 35 - dAttempts * 10);
+  return Math.min(100, 55 + Math.max(0, cc.maxSteps - cc.stepsUsed) * 3 + (cc.maxDiag - dAttempts + 1) * 10);
+}
+function grade(s) {
+  return s>=90?{g:'A+',c:'#185FA5'}:s>=80?{g:'A',c:'#185FA5'}:s>=70?{g:'B',c:'#3B6D11'}:s>=60?{g:'C',c:'#BA7517'}:{g:'D',c:'#A32D2D'};
+}
+
+// ── End screen ─────────────────────────────────────────────────────────────
+async function showEnd(correct) {
+  const sc = calcScore(correct);
+  const {g,c} = grade(sc);
+  const merged = getMergedActions(cc);
+  const all = {...merged.hist,...merged.exam,...merged.labs,...merged.img};
+  const found = Array.from(used).filter(k=>all[k]?.tag==='crit');
+  const allCrit = Object.values(all).filter(v=>v.tag==='crit');
+  const missed = allCrit.filter(v=>!found.some(k=>all[k]===v));
+  const unnecessary = Array.from(used).filter(k=>all[k]?.tag==='norm');
+
+  // Save to Supabase and get points earned
+  const ptsEarned = await saveAttempt(correct, sc);
+
+  const el = document.createElement('div'); el.className='overlay';
+  el.innerHTML=`<div class="modal">
+    <h2>${correct?'✓ Case complete':'Case ended'}</h2>
+    <p class="msub">${correct?'Good clinical reasoning.':'Review what you found and missed.'}</p>
+    <div class="score-box">
+      <div class="score-num" style="color:${c}">${sc}</div>
+      <div class="score-grade" style="color:${c}">${g}</div>
+      <div class="score-lbl">/ 100 · ${cc.stepsUsed}/${cc.maxSteps} steps · ${dAttempts} dx attempt${dAttempts>1?'s':''}</div>
+    </div>
+    ${ptsEarned ? `<div class="points-earned"><div class="points-earned-num">+${ptsEarned} pts</div><div class="points-earned-lbl">Added to your score</div></div>` : ''}
+    <div class="rsec"><div class="rst">Correct diagnosis</div><div class="rdiag">${cc.dx}</div><div class="rexp">${cc.learn}</div></div>
+    ${found.length?`<div class="rsec"><div class="rst">Critical findings uncovered (${found.length}/${allCrit.length})</div><ul class="rlist">${found.map(k=>`<li class="g">✓ ${all[k].lbl}</li>`).join('')}</ul></div>`:''}
+    ${missed.length?`<div class="rsec"><div class="rst">Critical findings missed (${missed.length})</div><ul class="rlist">${missed.map(v=>`<li class="bad">✗ ${v.lbl}</li>`).join('')}</ul></div>`:''}
+    ${unnecessary.length?`<div class="rsec"><div class="rst">Unnecessary tests (${unnecessary.length})</div><ul class="rlist">${unnecessary.map(k=>`<li class="m">− ${all[k].lbl}</li>`).join('')}</ul></div>`:''}
+    <div class="rsec"><div class="rst">Optimal pathway</div><ul class="rlist">${cc.path.map(s=>`<li class="m">→ ${s}</li>`).join('')}</ul></div>
+    <button class="btn-end pr" onclick="showSel()">Try another case</button>
+    <button class="btn-end sc" onclick="restart()">Retry this case</button>
+  </div>`;
+  document.getElementById('ov').innerHTML = '';
+  document.getElementById('ov').appendChild(el);
+}
+
+// ── Case select ────────────────────────────────────────────────────────────
+function showSel() {
+  document.getElementById('ov').innerHTML=`<div class="overlay"><div class="modal">
+    <h2>Select a case</h2><p class="msub">Choose your next patient encounter.</p>
+    <div class="case-grid">${CASES.map((c,i)=>`
+      <div class="ccard" onclick="load(${i})">
+        <div class="ccard-t">${c.pt.name}</div>
+        <div class="ccard-s">${c.pt.age}yo ${c.pt.sex}<br>${c.cc.slice(0,42)}...</div>
+        <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
+          <span class="badge ${c.dif==='Beginner'?'badge-green':c.dif==='Intermediate'?'badge-amber':'badge-red'}" style="font-size:10px">${c.dif}</span>
+          <span class="badge badge-blue" style="font-size:10px">${c.cat}</span>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div></div>`;
+}
+
+function restart() { document.getElementById('ov').innerHTML=''; load(CASES.indexOf(cc)); }
+
+// ── Load case ──────────────────────────────────────────────────────────────
+function load(idx) {
+  document.getElementById('ov').innerHTML = '';
+  cc = JSON.parse(JSON.stringify(CASES[idx]));
+  cc.stepsUsed = 0; cc.maxDiag = 3; cc.diagAttempts = 0;
+  used = new Set(); dAttempts = 0;
+
+  document.getElementById('ptN').textContent = cc.pt.name;
+  document.getElementById('ptI').textContent = `${cc.pt.age}yo ${cc.pt.sex} · ${cc.pt.occ}`;
+  document.getElementById('ptCC').textContent = cc.cc;
+  document.getElementById('stL').textContent = cc.maxSteps;
+  document.getElementById('dgL').textContent = cc.maxDiag;
+  document.getElementById('pb').style.cssText = 'width:100%;background:#185FA5';
+  document.getElementById('cNum').textContent = cc.title;
+  document.getElementById('catB').textContent = cc.cat;
+  const db = document.getElementById('difB');
+  db.textContent = cc.dif;
+  db.className = 'badge ' + (cc.dif==='Beginner'?'badge-green':cc.dif==='Intermediate'?'badge-amber':'badge-red');
+
+  initNotes();
+  buildActionIndex();
+
+  document.getElementById('tl').innerHTML = '';
+  addMsg('system','System',`<strong>${cc.title}</strong> — ${cc.pt.name}, ${cc.pt.age}yo ${cc.pt.sex}. Use the search bar to order tests or ask questions.`,'res');
+  addMsg('system','Triage note',`Chief complaint: <em>${cc.cc}</em> · Vitals in notes panel.`,'res');
+
+  const si = document.getElementById('searchInput'); si.disabled=false; si.value='';
+  const di = document.getElementById('diagInput'); di.disabled=false; di.value='';
+  document.getElementById('diagBtn').disabled = false;
+  document.querySelectorAll('.adot').forEach((d,i)=>{ d.className='adot'+(i<3?' on':''); });
+  closeSug();
+}
+
+</script>
+</body>
+</html>
