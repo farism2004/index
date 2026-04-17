@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DxArena — Clinical Reasoning Arena</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -205,20 +206,10 @@
 const SUPABASE_URL = 'https://vyngrqvucmhqhnbrfkgh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bmdycXZ1Y21ocWhuYnJma2doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzkzNDAsImV4cCI6MjA5MTg1NTM0MH0.U64gHzArhKOObecV1Jt-Gxh94IPNWK8OGNYVTuzNi5w';
 
-// Load Supabase dynamically so we control timing
-const sbScript = document.createElement('script');
-sbScript.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js';
-sbScript.onload = function() { initApp(); };
-sbScript.onerror = function() {
-  // fallback CDN
-  const s2 = document.createElement('script');
-  s2.src = 'https://unpkg.com/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js';
-  s2.onload = function() { initApp(); };
-  document.head.appendChild(s2);
-};
-document.head.appendChild(sbScript);
+// Create client immediately — script is in <head> so it's already loaded
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let sb, currentUser = null, userProfile = null;
+let currentUser = null, userProfile = null;
 let cc = null, used = new Set(), dAttempts = 0;
 let allActions = [], selIdx = -1;
 let txPhase = false, txData = null, txUsed = new Set(), txStepsUsed = 0, txAllActions = [];
@@ -351,9 +342,8 @@ async function showProfile() {
   document.getElementById('ov').appendChild(el);
 }
 
-function initApp() {
-  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+// Setup on DOM ready
+document.addEventListener('DOMContentLoaded', function() {
   sb.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
       currentUser = session.user;
@@ -386,7 +376,7 @@ function initApp() {
     } else if(e.key==='Escape'){closeSug();}
   });
   document.addEventListener('click', e => { if(!e.target.closest('.bottom-bar')) closeSug(); });
-}
+}); // end DOMContentLoaded
 
 const CASES = [
  {
