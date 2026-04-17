@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DxArena — Clinical Reasoning Arena</title>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F0EEE8;color:#1a1a1a;height:100vh;overflow:hidden}
@@ -262,7 +262,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div id="ov"></div>
 
 <script>
-
 // ── Supabase ────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://vyngrqvucmhqhnbrfkgh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bmdycXZ1Y21ocWhuYnJma2doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzkzNDAsImV4cCI6MjA5MTg1NTM0MH0.U64gHzArhKOObecV1Jt-Gxh94IPNWK8OGNYVTuzNi5w';
@@ -271,19 +270,21 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 let userProfile = null;
 
+// ── Auth helpers ────────────────────────────────────────────────────────────
 function showAuthError(msg) {
   const el = document.getElementById('authError');
-  el.textContent = msg;
-  el.style.background = '#FCEBEB'; el.style.color = '#791F1F';
-  el.className = 'auth-error show';
+  el.textContent = msg; el.className = 'auth-error show';
 }
-function clearAuthError() { document.getElementById('authError').className = 'auth-error'; }
-function setAuthBtn(disabled) { document.querySelectorAll('.auth-btn').forEach(b => b.disabled = disabled); }
-
+function clearAuthError() {
+  document.getElementById('authError').className = 'auth-error';
+}
 function switchAuth(view) {
   clearAuthError();
-  document.getElementById('loginView').style.display = view === 'login' ? 'block' : 'none';
-  document.getElementById('signupView').style.display = view === 'signup' ? 'block' : 'none';
+  document.getElementById('loginView').style.display = view==='login' ? 'block' : 'none';
+  document.getElementById('signupView').style.display = view==='signup' ? 'block' : 'none';
+}
+function setAuthBtn(disabled) {
+  document.querySelectorAll('.auth-btn').forEach(b => b.disabled = disabled);
 }
 
 async function doLogin() {
@@ -291,11 +292,9 @@ async function doLogin() {
   const pass = document.getElementById('loginPassword').value;
   if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
   clearAuthError(); setAuthBtn(true);
-  try {
-    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-    setAuthBtn(false);
-    if (error) showAuthError(error.message);
-  } catch(e) { setAuthBtn(false); showAuthError('Connection error — please try again.'); }
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  setAuthBtn(false);
+  if (error) showAuthError(error.message);
 }
 
 async function doSignup() {
@@ -304,16 +303,12 @@ async function doSignup() {
   if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
   if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
   clearAuthError(); setAuthBtn(true);
-  try {
-    const { error } = await sb.auth.signUp({ email, password: pass });
-    setAuthBtn(false);
-    if (error) { showAuthError(error.message); return; }
-    const el = document.getElementById('authError');
-    el.textContent = '✓ Account created! You can now sign in.';
-    el.style.background = '#EAF3DE'; el.style.color = '#27500A';
-    el.className = 'auth-error show';
-    switchAuth('login');
-  } catch(e) { setAuthBtn(false); showAuthError('Connection error — please try again.'); }
+  const { error } = await sb.auth.signUp({ email, password: pass });
+  setAuthBtn(false);
+  if (error) { showAuthError(error.message); return; }
+  showAuthError('✓ Account created! Check your email to confirm, then sign in.');
+  document.getElementById('authError').style.background = '#EAF3DE';
+  document.getElementById('authError').style.color = '#27500A';
 }
 
 async function doSignOut() {
@@ -329,28 +324,32 @@ async function loadProfile() {
   const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   userProfile = data;
   if (data) {
-    const initials = (data.email || '?')[0].toUpperCase();
+    const initials = (data.email||'?')[0].toUpperCase();
     document.getElementById('userAvatar').textContent = initials;
     document.getElementById('userName').textContent = data.email.split('@')[0];
-    document.getElementById('userPts').textContent = (data.total_points || 0) + ' pts';
+    document.getElementById('userPts').textContent = (data.total_points||0) + ' pts';
   }
 }
 
 async function saveAttempt(correct, score) {
-  if (!currentUser) return 0;
+  if (!currentUser) return;
   const pts = correct ? Math.max(10, score) : 5;
-  try {
-    await sb.from('case_attempts').insert({
-      user_id: currentUser.id, case_id: cc.id, case_title: cc.title,
-      case_category: cc.cat, score, correct,
-      steps_used: cc.stepsUsed, max_steps: cc.maxSteps, diag_attempts: dAttempts
-    });
-    await sb.from('profiles').update({
-      total_points: (userProfile?.total_points || 0) + pts,
-      cases_completed: (userProfile?.cases_completed || 0) + 1
-    }).eq('id', currentUser.id);
-    await loadProfile();
-  } catch(e) { console.error('Save attempt failed:', e); }
+  await sb.from('case_attempts').insert({
+    user_id: currentUser.id,
+    case_id: cc.id,
+    case_title: cc.title,
+    case_category: cc.cat,
+    score,
+    correct,
+    steps_used: cc.stepsUsed,
+    max_steps: cc.maxSteps,
+    diag_attempts: dAttempts
+  });
+  await sb.from('profiles').update({
+    total_points: (userProfile?.total_points||0) + pts,
+    cases_completed: (userProfile?.cases_completed||0) + 1
+  }).eq('id', currentUser.id);
+  await loadProfile();
   return pts;
 }
 
@@ -360,45 +359,56 @@ async function showProfile() {
   const { data: attempts } = await sb.from('case_attempts')
     .select('*').eq('user_id', currentUser.id)
     .order('completed_at', { ascending: false }).limit(20);
+
   const total = attempts?.length || 0;
-  const passed = attempts?.filter(a => a.correct).length || 0;
+  const passed = attempts?.filter(a=>a.correct).length || 0;
+  const avgScore = total ? Math.round(attempts.reduce((s,a)=>s+a.score,0)/total) : 0;
+
+  // Category breakdown
   const cats = {};
-  (attempts || []).forEach(a => {
-    if (!cats[a.case_category]) cats[a.case_category] = { total: 0, passed: 0 };
+  (attempts||[]).forEach(a => {
+    if (!cats[a.case_category]) cats[a.case_category] = {total:0,passed:0};
     cats[a.case_category].total++;
     if (a.correct) cats[a.case_category].passed++;
   });
-  const maxCat = Math.max(...Object.values(cats).map(c => c.total), 1);
-  const el = document.createElement('div'); el.className = 'overlay';
-  el.innerHTML = `<div class="modal">
+  const maxCat = Math.max(...Object.values(cats).map(c=>c.total), 1);
+
+  const el = document.createElement('div'); el.className='overlay';
+  el.innerHTML=`<div class="modal">
     <div class="profile-header">
-      <div class="profile-avatar">${(userProfile?.email || '?')[0].toUpperCase()}</div>
+      <div class="profile-avatar">${(userProfile?.email||'?')[0].toUpperCase()}</div>
       <div>
-        <div class="profile-name">${userProfile?.email?.split('@')[0] || 'User'}</div>
-        <div class="profile-email">${userProfile?.email || ''}</div>
-        <div class="profile-joined">Member since ${new Date(userProfile?.created_at || Date.now()).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</div>
+        <div class="profile-name">${userProfile?.email?.split('@')[0]||'User'}</div>
+        <div class="profile-email">${userProfile?.email||''}</div>
+        <div class="profile-joined">Member since ${new Date(userProfile?.created_at||Date.now()).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</div>
       </div>
     </div>
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-card-val">${userProfile?.total_points || 0}</div><div class="stat-card-lbl">Total points</div></div>
+      <div class="stat-card"><div class="stat-card-val">${userProfile?.total_points||0}</div><div class="stat-card-lbl">Total points</div></div>
       <div class="stat-card"><div class="stat-card-val">${total}</div><div class="stat-card-lbl">Cases played</div></div>
-      <div class="stat-card"><div class="stat-card-val">${total ? Math.round(passed / total * 100) : 0}%</div><div class="stat-card-lbl">Pass rate</div></div>
+      <div class="stat-card"><div class="stat-card-val">${total?Math.round(passed/total*100):0}%</div><div class="stat-card-lbl">Pass rate</div></div>
     </div>
-    ${Object.keys(cats).length ? `<div class="history-section"><div class="history-title">By specialty</div><div class="cat-row">
-      ${Object.entries(cats).map(([cat, d]) => `<div class="cat-card">
-        <div class="cat-name">${cat}</div>
-        <div class="cat-count">${d.total} case${d.total > 1 ? 's' : ''} · ${Math.round(d.passed / d.total * 100)}% pass</div>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(d.total / maxCat * 100)}%"></div></div>
-      </div>`).join('')}
-    </div></div>` : ''}
-    <div class="history-section"><div class="history-title">Recent cases</div>
-      ${(attempts || []).slice(0, 8).map(a => `<div class="history-item">
-        <div>
-          <div class="history-case">${a.case_title} <span style="font-size:11px;color:#888;font-weight:400">· ${a.case_category}</span></div>
-          <div class="history-meta">${new Date(a.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · ${a.steps_used}/${a.max_steps} steps</div>
-        </div>
-        <div class="history-score ${a.correct ? 'pass' : 'fail'}">${a.score}</div>
-      </div>`).join('') || '<div style="color:#aaa;font-size:13px">No cases played yet.</div>'}
+    ${Object.keys(cats).length ? `
+    <div class="history-section">
+      <div class="history-title">By specialty</div>
+      <div class="cat-row">${Object.entries(cats).map(([cat,d])=>`
+        <div class="cat-card">
+          <div class="cat-name">${cat}</div>
+          <div class="cat-count">${d.total} case${d.total>1?'s':''} · ${Math.round(d.passed/d.total*100)}% pass</div>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(d.total/maxCat*100)}%"></div></div>
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
+    <div class="history-section">
+      <div class="history-title">Recent cases</div>
+      ${(attempts||[]).slice(0,8).map(a=>`
+        <div class="history-item">
+          <div>
+            <div class="history-case">${a.case_title} <span style="font-size:11px;color:#888;font-weight:400">· ${a.case_category}</span></div>
+            <div class="history-meta">${new Date(a.completed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · ${a.steps_used}/${a.max_steps} steps · ${a.diag_attempts} dx attempt${a.diag_attempts>1?'s':''}</div>
+          </div>
+          <div class="history-score ${a.correct?'pass':'fail'}">${a.score}</div>
+        </div>`).join('') || '<div style="color:#aaa;font-size:13px">No cases played yet.</div>'}
     </div>
     <button class="btn-signout" onclick="doSignOut()">Sign out</button>
     <button class="btn-end sc" onclick="document.getElementById('ov').innerHTML=''" style="margin-top:6px">Close</button>
@@ -422,17 +432,14 @@ sb.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
-// Enter key on auth inputs
-document.addEventListener('DOMContentLoaded', () => {
-  ['loginEmail','loginPassword'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-  });
-  ['signupEmail','signupPassword'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') doSignup(); });
-  });
+// handle enter on auth inputs
+['loginEmail','loginPassword'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+});
+['signupEmail','signupPassword'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if(e.key==='Enter') doSignup(); });
 });
 
-// ── Case data ───────────────────────────────────────────────────────────────
 const CASES = [
  {
   id:1,title:"Case #1",cat:"Neurology",dif:"Beginner",maxSteps:12,
@@ -608,6 +615,7 @@ const CASES = [
   }
  }
 ];
+
 // ── Universal Action Bank ──────────────────────────────────────────────────
 // These apply to every case. Case-specific answers always override these.
 const UNIVERSAL = {
@@ -774,7 +782,6 @@ const UNIVERSAL = {
   }
 };
 
-
 // ── Merge universal bank with case-specific actions ───────────────────────
 function getMergedActions(caseObj) {
   const merged = { hist:{}, exam:{}, labs:{}, img:{} };
@@ -786,155 +793,6 @@ function getMergedActions(caseObj) {
   });
   return merged;
 }
-
-
-
-
-// ── Treatment Data ─────────────────────────────────────────────────────────
-// Each case gets a treatment object with actions the user can order/select
-// after correct diagnosis. Same search mechanic as the main game.
-
-const TREATMENTS = {
-
- 1: { // SAH
-  title: "Managing your patient — Subarachnoid Haemorrhage",
-  intro: "Your patient has been stabilised in the ED. The neurosurgery team has been notified. Now manage the acute presentation and prevent complications.",
-  maxSteps: 10,
-  learn: "SAH management is focused on preventing rebleeding, treating vasospasm, and managing raised ICP. Nimodipine is the only drug proven to improve neurological outcomes — it reduces vasospasm. Definitive treatment is surgical (clipping) or endovascular (coiling) of the aneurysm.",
-  optimal: [
-    "ICU admission and close neuro monitoring",
-    "Nimodipine 60mg PO/NG every 4 hours for 21 days — vasospasm prevention",
-    "Neurosurgery referral — aneurysm clipping vs coiling",
-    "Strict blood pressure control (target SBP <160mmHg)",
-    "Repeat CT Head at 24–48h to monitor for hydrocephalus",
-    "DVT prophylaxis — compression stockings initially",
-    "Stool softeners — avoid Valsalva",
-    "Monitor for hyponatraemia (SIADH/CSW)"
-  ],
-  actions: {
-   nimodipine:     { lbl:"Nimodipine", q:"Start nimodipine", a:"Nimodipine 60mg PO/NG every 4 hours for 21 days initiated. Calcium channel blocker — reduces cerebral vasospasm by blocking L-type calcium channels in cerebral arterial smooth muscle. The only drug shown to improve neurological outcomes in SAH. Monitor BP — can cause hypotension.", tag:"crit" },
-   icu:            { lbl:"ICU admission", q:"Admit to ICU", a:"Patient admitted to neurocritical care ICU. Continuous neuro monitoring, hourly GCS, pupillary responses, and vital signs. Arterial line placed for continuous BP monitoring. ICP monitoring considered.", tag:"crit" },
-   bp_control:     { lbl:"Blood pressure control", q:"Manage blood pressure", a:"Target SBP <160 mmHg to reduce rebleeding risk while maintaining cerebral perfusion pressure. IV labetalol or nicardipine used for acute control. Avoid hypotension — can worsen ischaemia.", tag:"crit" },
-   neuro_referral: { lbl:"Neurosurgery referral", q:"Refer to neurosurgery", a:"Urgent neurosurgery referral made. Multidisciplinary discussion regarding aneurysm treatment — surgical clipping vs endovascular coiling. Aneurysm location (PComA) and patient factors considered. Coiling preferred if anatomy favourable.", tag:"crit" },
-   angiogram:      { lbl:"Cerebral angiogram (DSA)", q:"Order formal cerebral angiogram", a:"Digital subtraction angiography (DSA) ordered — gold standard for aneurysm characterisation. Confirms 5mm PComA aneurysm. Neck morphology assessed for coiling vs clipping decision.", tag:"crit" },
-   ct_repeat:      { lbl:"Repeat CT Head", q:"Order repeat CT head at 24-48h", a:"Repeat CT Head at 24 hours shows stable subarachnoid blood. No new hydrocephalus. No evidence of rebleeding. Ventricular size stable.", tag:"res" },
-   dvt_prop:       { lbl:"DVT prophylaxis", q:"Start DVT prophylaxis", a:"Mechanical DVT prophylaxis initiated — bilateral pneumatic compression devices. Pharmacological prophylaxis (LMWH) deferred until after aneurysm is secured due to bleeding risk.", tag:"res" },
-   stool_soft:     { lbl:"Stool softeners", q:"Prescribe stool softeners", a:"Docusate sodium prescribed. Straining at stool increases intracranial pressure via Valsalva manoeuvre — could precipitate rebleeding before aneurysm is secured. Bed rest and head-of-bed elevation 30 degrees.", tag:"res" },
-   analgesia:      { lbl:"Analgesia", q:"Manage headache and pain", a:"IV paracetamol (acetaminophen) 1g every 6 hours for headache. NSAIDs avoided — platelet inhibition increases bleeding risk. Opioids used cautiously if needed — can mask neurological deterioration.", tag:"res" },
-   antiemetic:     { lbl:"Antiemetics", q:"Prescribe antiemetics", a:"Ondansetron 4mg IV prescribed PRN. Vomiting raises intracranial pressure and risks aspiration. Avoid metoclopramide — can lower seizure threshold.", tag:"res" },
-   seizure_prop:   { lbl:"Seizure prophylaxis", q:"Start seizure prophylaxis", a:"Levetiracetam 500mg BD initiated for short-term seizure prophylaxis. Seizures increase cerebral metabolic demand and risk rebleeding. Long-term prophylaxis not routinely indicated unless seizures occur.", tag:"res" },
-   sodium_monitor: { lbl:"Monitor sodium (hyponatraemia)", q:"Monitor electrolytes for hyponatraemia", a:"Daily electrolytes ordered. SAH commonly causes hyponatraemia via SIADH or cerebral salt wasting (CSW). SIADH: restrict fluids. CSW: replace sodium and volume. Hyponatraemia worsens cerebral oedema and increases vasospasm risk.", tag:"res" },
-   fluids:         { lbl:"IV fluids", q:"Prescribe IV fluids", a:"Normal saline (0.9% NaCl) at 1–1.5x maintenance. Euvolaemia maintained — dehydration exacerbates vasospasm. Hypotonic fluids avoided as can worsen cerebral oedema.", tag:"res" },
-   tcd:            { lbl:"Transcranial Doppler (TCD)", q:"Order transcranial Doppler monitoring", a:"Daily TCD monitoring initiated to detect vasospasm. Elevated mean flow velocities (>120 cm/s in MCA) indicate vasospasm. Guides clinical decision-making regarding triple-H therapy if vasospasm develops.", tag:"res" },
-   steroids_no:    { lbl:"Corticosteroids", q:"Start corticosteroids", a:"Corticosteroids NOT indicated in SAH. No evidence of benefit and associated with increased complications including hyperglycaemia and infection. Not prescribed.", tag:"norm" },
-   aspirin_no:     { lbl:"Aspirin / antiplatelets", q:"Start aspirin", a:"Aspirin NOT indicated acutely in SAH — increases bleeding risk before aneurysm is secured. Held. May be considered post-procedure depending on treatment modality.", tag:"norm" },
-   patient_ed:     { lbl:"Patient & family education", q:"Counsel patient and family", a:"Patient and family counselled regarding diagnosis, treatment plan, and prognosis. Advised on activity restrictions, avoiding straining, and importance of follow-up. Smoking cessation strongly advised — smoking is a major risk factor for aneurysm formation and rupture.", tag:"res" },
-  }
- },
-
- 2: { // Anterior STEMI
-  title: "Managing your patient — Anterior STEMI",
-  intro: "ECG confirms anterior STEMI. Time is muscle. The cath lab has been activated. Now manage this patient's acute MI and initiate secondary prevention.",
-  maxSteps: 12,
-  learn: "STEMI management is time-critical — door-to-balloon time should be <90 minutes. Primary PCI is the gold standard for reperfusion. Dual antiplatelet therapy (aspirin + P2Y12 inhibitor), anticoagulation, and statins are cornerstones of treatment. Beta-blockers and ACE inhibitors are started once haemodynamically stable.",
-  optimal: [
-    "Activate cath lab immediately — door-to-balloon <90 minutes",
-    "Aspirin 300mg loading dose stat",
-    "Ticagrelor 180mg loading dose (P2Y12 inhibitor)",
-    "Unfractionated heparin IV bolus",
-    "Primary PCI — stent to culprit LAD lesion",
-    "High-intensity statin (atorvastatin 80mg)",
-    "Beta-blocker once haemodynamically stable",
-    "ACE inhibitor within 24 hours",
-    "Cardiac rehabilitation referral",
-    "Secondary prevention counselling"
-  ],
-  actions: {
-   cath_lab:       { lbl:"Activate cath lab", q:"Activate the cath lab", a:"Cath lab activated. Door-to-balloon time target <90 minutes. Interventional cardiology team mobilised. Patient transferred to catheterisation laboratory for primary PCI.", tag:"crit" },
-   aspirin:        { lbl:"Aspirin (loading dose)", q:"Give aspirin loading dose", a:"Aspirin 300mg chewed and swallowed immediately. Irreversibly inhibits COX-1, reducing thromboxane A2-mediated platelet aggregation. Loading dose achieves rapid platelet inhibition. Continue 75mg daily indefinitely post-MI.", tag:"crit" },
-   ticagrelor:     { lbl:"Ticagrelor (P2Y12 inhibitor)", q:"Start ticagrelor", a:"Ticagrelor 180mg loading dose given. Reversible P2Y12 ADP receptor antagonist — inhibits platelet aggregation. Preferred over clopidogrel in STEMI (PLATO trial). Continue 90mg BD for 12 months post-PCI. Dual antiplatelet therapy (DAPT) with aspirin reduces stent thrombosis risk.", tag:"crit" },
-   heparin:        { lbl:"Unfractionated heparin (UFH)", q:"Give IV heparin", a:"Unfractionated heparin 60 units/kg IV bolus (max 4000 units) given. Antithrombin-dependent inhibitor of thrombin and factor Xa. Anticoagulation during PCI reduces coronary thrombus propagation. Weight-adjusted dosing continued during procedure.", tag:"crit" },
-   pci:            { lbl:"Primary PCI", q:"Proceed to primary PCI", a:"Primary PCI performed. Proximal LAD 95% occlusion identified — culprit lesion. Thrombectomy performed. Drug-eluting stent deployed with TIMI 3 flow restored. Procedure successful. EF post-procedure estimated 42%.", tag:"crit" },
-   statin:         { lbl:"High-intensity statin", q:"Start high-intensity statin", a:"Atorvastatin 80mg daily started. High-intensity statin therapy initiated regardless of baseline LDL. Reduces recurrent cardiovascular events, stabilises atherosclerotic plaques, and has pleiotropic anti-inflammatory effects. Continue indefinitely.", tag:"crit" },
-   beta_blocker:   { lbl:"Beta-blocker", q:"Start beta-blocker", a:"Metoprolol succinate 25mg daily started once haemodynamically stable (SBP >100, HR >60). Reduces myocardial oxygen demand, limits infarct size, and reduces ventricular arrhythmia risk. Titrate up as tolerated. Contraindicated in acute decompensated heart failure, bradycardia, or cardiogenic shock.", tag:"crit" },
-   ace_inhibitor:  { lbl:"ACE inhibitor", q:"Start ACE inhibitor", a:"Ramipril 2.5mg daily started within 24 hours. ACE inhibitors reduce afterload, prevent adverse cardiac remodelling, and improve survival post-MI — especially with anterior STEMI and reduced EF. Titrate to maximum tolerated dose. Monitor renal function and potassium.", tag:"crit" },
-   oxygen:         { lbl:"Oxygen therapy", q:"Start supplemental oxygen", a:"Supplemental oxygen given only if SpO2 <94%. Routine high-flow oxygen NOT indicated in STEMI without hypoxia — may cause vasoconstriction and worsen outcomes. Current SpO2 96% on room air — supplemental oxygen not required.", tag:"res" },
-   morphine:       { lbl:"Morphine / analgesia", q:"Give morphine for chest pain", a:"Morphine used cautiously — reduces pain and sympathetic activation but delays absorption of oral antiplatelets (AVOID if possible). IV paracetamol or GTN preferred for pain relief. Morphine given 2mg IV titrated if pain not controlled.", tag:"res" },
-   gtn:            { lbl:"GTN (Glyceryl trinitrate)", q:"Give GTN", a:"GTN 400mcg sublingual given for chest pain relief. Venous and arterial vasodilator — reduces preload and myocardial oxygen demand. Contraindicated if SBP <90mmHg, recent PDE5 inhibitor use, or right ventricular infarction.", tag:"res" },
-   echo_post:      { lbl:"Post-procedure echocardiogram", q:"Order echo post-PCI", a:"Post-procedure echo confirms anterior and septal hypokinesis. EF 40–45%. No significant valvular dysfunction. No VSD or free wall rupture. Findings consistent with anterior MI. Repeat echo at 6–8 weeks to reassess EF.", tag:"res" },
-   cardiac_rehab:  { lbl:"Cardiac rehabilitation", q:"Refer to cardiac rehabilitation", a:"Cardiac rehabilitation referral made. Structured programme includes supervised exercise, risk factor modification, psychological support, and secondary prevention education. Reduces recurrent MI and mortality by ~25%.", tag:"res" },
-   aldosterone_ant:{ lbl:"Aldosterone antagonist", q:"Start aldosterone antagonist", a:"Eplerenone 25mg daily started — indicated post-MI with EF <40% and either symptoms of heart failure or diabetes. Reduces mortality (EPHESUS trial). Monitor potassium and renal function closely. Avoid if K+ >5.0 or eGFR <30.", tag:"res" },
-   warfarin_no:    { lbl:"Warfarin / anticoagulation", q:"Start warfarin", a:"Warfarin not routinely indicated post-STEMI unless concomitant AF, large anterior MI with LV thrombus, or mechanical valve. Triple therapy (warfarin + DAPT) carries significant bleeding risk and avoided unless specific indication.", tag:"norm" },
-   clopidogrel:    { lbl:"Clopidogrel (alternative P2Y12)", q:"Give clopidogrel instead", a:"Clopidogrel 600mg loading dose is an alternative P2Y12 inhibitor. However, ticagrelor is preferred over clopidogrel in STEMI based on PLATO trial data (superior mortality benefit). Clopidogrel used if ticagrelor contraindicated or unavailable.", tag:"norm" },
-   secondary_prev: { lbl:"Secondary prevention counselling", q:"Counsel on secondary prevention", a:"Patient counselled: smoking cessation (most important single intervention), Mediterranean diet, regular aerobic exercise (30 min/day, 5 days/week), alcohol moderation, weight management, BP and diabetes control. All medications explained. Follow-up in 2 weeks with cardiology.", tag:"res" },
-  }
- },
-
- 3: { // Nephrolithiasis
-  title: "Managing your patient — Ureterolithiasis",
-  intro: "CT confirms a 5mm obstructing stone at the right UVJ. Now manage this patient's pain, facilitate stone passage, and arrange appropriate follow-up.",
-  maxSteps: 8,
-  learn: "Most ureteral stones <5mm pass spontaneously. Medical expulsive therapy (alpha-blockers like tamsulosin) relaxes ureteral smooth muscle and increases passage rates. Adequate analgesia is critical — NSAIDs are first-line as they reduce ureteral spasm and renal pelvis pressure. Urological intervention (ureteroscopy or ESWL) is needed if stone fails to pass or complications arise.",
-  optimal: [
-    "NSAIDs first-line for analgesia (ibuprofen/ketorolac)",
-    "IV fluids for hydration",
-    "Tamsulosin (alpha-blocker) — medical expulsive therapy",
-    "Antiemetics for nausea",
-    "Urology referral",
-    "Strain urine to catch stone for analysis",
-    "Dietary and fluid intake counselling",
-    "Follow-up imaging in 2–4 weeks"
-  ],
-  actions: {
-   nsaids:         { lbl:"NSAIDs (first-line analgesia)", q:"Give NSAIDs for pain", a:"Ketorolac 30mg IV given. NSAIDs are FIRST-LINE for renal colic — they inhibit prostaglandin synthesis, reducing ureteral smooth muscle spasm and decreasing renal pelvis pressure. Superior to opioids for ureteric pain. Avoid if renal function significantly impaired or allergy.", tag:"crit" },
-   tamsulosin:     { lbl:"Tamsulosin (medical expulsive therapy)", q:"Start tamsulosin", a:"Tamsulosin 0.4mg daily started. Alpha-1 adrenergic receptor antagonist — relaxes smooth muscle in the distal ureter, facilitating stone passage. Increases spontaneous passage rate for stones 5–10mm by ~30%. Continue until stone passes or 4 weeks. Side effects: orthostatic hypotension, retrograde ejaculation.", tag:"crit" },
-   iv_fluids2:     { lbl:"IV fluids", q:"Start IV fluids", a:"1L normal saline given IV over 2 hours. Corrects dehydration (common in construction workers). Maintains urine output to facilitate stone passage. High-volume forced diuresis NOT recommended — does not accelerate stone passage and may worsen pain.", tag:"res" },
-   antiemetic2:    { lbl:"Antiemetics", q:"Give antiemetics", a:"Ondansetron 4mg IV given. Nausea common in renal colic — both from pain and ureteral spasm. Enables oral analgesia and hydration.", tag:"res" },
-   opioids:        { lbl:"Opioids (if NSAIDs insufficient)", q:"Give opioid analgesia", a:"Morphine 5mg IV given as breakthrough analgesia. Second-line to NSAIDs. Used when pain inadequately controlled with NSAIDs alone or NSAIDs contraindicated. Risk of nausea, sedation, and constipation.", tag:"res" },
-   urology_ref:    { lbl:"Urology referral", q:"Refer to urology", a:"Urology referral made. 5mm stone at UVJ — borderline for spontaneous passage. Urologist will arrange outpatient follow-up in 2–4 weeks. If stone fails to pass, ureteroscopy with laser lithotripsy or ESWL considered.", tag:"crit" },
-   strain_urine:   { lbl:"Strain urine (stone analysis)", q:"Strain urine to catch stone", a:"Patient instructed to urinate through a fine mesh strainer. Any stone caught sent for crystal composition analysis. Stone type guides dietary prevention — calcium oxalate (most common): reduce oxalate, increase citrate. Uric acid: alkalinise urine, reduce purines.", tag:"res" },
-   stone_analysis: { lbl:"24-hour urine collection", q:"Order 24-hour urine collection", a:"24-hour urine collection arranged for outpatient follow-up. Measures calcium, oxalate, uric acid, citrate, sodium, and creatinine. Identifies metabolic risk factors for recurrent stone formation. Guides long-term dietary and pharmacological prevention.", tag:"res" },
-   follow_up_img:  { lbl:"Follow-up imaging", q:"Arrange follow-up imaging", a:"KUB X-ray or low-dose CT KUB arranged in 2–4 weeks to confirm stone passage. If stone not passed by 4 weeks — urological intervention indicated. If fever/sepsis develops — urgent urological decompression required.", tag:"res" },
-   diet_counsel:   { lbl:"Dietary counselling", q:"Counsel on diet and fluid intake", a:"Fluid intake: target urine output >2L/day — most important single intervention. Reduce sodium and animal protein intake. Increase citrate (lemon juice). Reduce oxalate-rich foods (spinach, nuts, chocolate). Dietary calcium should NOT be restricted — may paradoxically increase oxalate absorption.", tag:"res" },
-   antibiotics_no: { lbl:"Antibiotics", q:"Start antibiotics", a:"Antibiotics NOT indicated — no evidence of urinary tract infection. No fever, no positive culture, no leucocytes or nitrites on UA. If infection with obstruction were present (pyonephrosis) — urgent decompression AND antibiotics would be required.", tag:"norm" },
-   eswl:           { lbl:"ESWL (Shockwave lithotripsy)", q:"Arrange ESWL", a:"ESWL not indicated acutely. Appropriate for stones 5–20mm in renal pelvis or proximal ureter. For this distal ureteral stone, ureteroscopy is generally preferred. Can be arranged as outpatient if stone fails to pass with medical management.", tag:"norm" },
-   ureteroscopy:   { lbl:"Ureteroscopy", q:"Arrange urgent ureteroscopy", a:"Urgent ureteroscopy not indicated at this stage — 5mm stone, no infection, no solitary kidney, adequate renal function. Trial of medical expulsive therapy appropriate first. Ureteroscopy arranged if stone fails to pass within 4 weeks or complications arise.", tag:"norm" },
-  }
- },
-
- 4: { // Ascending Cholangitis
-  title: "Managing your patient — Ascending Cholangitis",
-  intro: "Your patient has ascending cholangitis with features of Reynolds' Pentad — this is a surgical emergency. Resuscitate, start antibiotics, and arrange urgent biliary drainage.",
-  maxSteps: 12,
-  learn: "Ascending cholangitis management follows the Tokyo Guidelines. Severity grading guides urgency of biliary drainage. Grade III (severe — organ dysfunction) requires emergency ERCP within hours. The sequence is: resuscitate → blood cultures → antibiotics → ERCP. Antibiotics treat sepsis but do NOT relieve obstruction — ERCP is the definitive treatment.",
-  optimal: [
-    "Aggressive IV fluid resuscitation",
-    "Blood cultures x2 BEFORE antibiotics",
-    "Broad-spectrum IV antibiotics (piperacillin-tazobactam)",
-    "IV paracetamol / analgesia",
-    "Urgent ERCP for biliary decompression",
-    "NPO (nil by mouth)",
-    "ICU admission — septic shock",
-    "Gastroenterology / HPB surgery referral",
-    "Cholecystectomy planning post-recovery"
-  ],
-  actions: {
-   fluids2:        { lbl:"IV fluid resuscitation", q:"Start aggressive IV fluid resuscitation", a:"IV fluid resuscitation initiated — 30ml/kg crystalloid bolus (normal saline) over 3 hours per sepsis protocol. Patient hypotensive and tachycardic — fluid resuscitation is the immediate priority. Vasopressors (noradrenaline) may be required if inadequate response. Urine output target >0.5ml/kg/hr.", tag:"crit" },
-   blood_cx3:      { lbl:"Blood cultures (before antibiotics)", q:"Draw blood cultures before starting antibiotics", a:"Two sets of blood cultures drawn from separate sites BEFORE antibiotic administration. Critical — antibiotics will sterilise blood within hours. Cultures guide de-escalation once sensitivities return. Gram-negative enteric organisms expected (E. coli, Klebsiella).", tag:"crit" },
-   antibiotics:    { lbl:"IV antibiotics (piperacillin-tazobactam)", q:"Start IV broad-spectrum antibiotics", a:"Piperacillin-tazobactam 4.5g IV every 6 hours started. Broad-spectrum beta-lactam/beta-lactamase inhibitor covering gram-negative enteric organisms (E. coli, Klebsiella) and anaerobes. Alternative: meropenem if severe allergy or resistant organisms suspected. De-escalate based on culture sensitivities.", tag:"crit" },
-   ercp:           { lbl:"Urgent ERCP (biliary drainage)", q:"Arrange urgent ERCP", a:"Emergency ERCP performed within 24 hours. Sphincterotomy and stone extraction performed. Plastic biliary stent placed for drainage. Bile flows freely — biliary decompression achieved. This is the DEFINITIVE treatment — antibiotics alone do not relieve obstruction. Post-procedure monitoring in HDU.", tag:"crit" },
-   icu2:           { lbl:"ICU / HDU admission", q:"Admit to ICU/HDU", a:"Patient transferred to HDU. Haemodynamically unstable with septic shock. Continuous monitoring — arterial line, central venous catheter, urinary catheter. Vasopressor support with noradrenaline initiated. Sepsis bundle commenced.", tag:"crit" },
-   npo:            { lbl:"Nil by mouth (NPO)", q:"Make patient nil by mouth", a:"Patient made nil by mouth in preparation for urgent ERCP under sedation. NG tube placed if vomiting. IV maintenance fluids continued. Oral medications converted to IV or NG route.", tag:"res" },
-   analgesia2:     { lbl:"Analgesia", q:"Manage pain", a:"IV paracetamol 1g every 6 hours given. Morphine 2–4mg IV titrated for breakthrough pain. NSAIDs avoided — renal impairment present (Cr 1.8). Adequate analgesia reduces sympathetic activation and oxygen demand.", tag:"res" },
-   gastro_ref:     { lbl:"Gastroenterology / HPB referral", q:"Refer to gastroenterology and HPB surgery", a:"Urgent gastroenterology referral for ERCP. Hepato-pancreato-biliary (HPB) surgery team informed — may require surgical decompression if ERCP fails. Multidisciplinary approach essential.", tag:"crit" },
-   vasopressors:   { lbl:"Vasopressors (noradrenaline)", q:"Start vasopressors", a:"Noradrenaline (norepinephrine) 0.05–0.3 mcg/kg/min commenced via central line. Septic shock with inadequate response to fluid resuscitation. Alpha-1 adrenergic agonist — increases SVR and MAP. Target MAP >65 mmHg. Titrate to haemodynamic response.", tag:"res" },
-   cholecystectomy:{ lbl:"Cholecystectomy planning", q:"Plan cholecystectomy", a:"Laparoscopic cholecystectomy planned after patient recovers from acute illness — typically 4–6 weeks post-ERCP. Definitive treatment to prevent recurrent biliary disease. Not performed acutely due to sepsis and haemodynamic instability.", tag:"res" },
-   ursodeoxycholic:{ lbl:"Ursodeoxycholic acid", q:"Start ursodeoxycholic acid", a:"Ursodeoxycholic acid NOT indicated acutely. May have a role in dissolution of cholesterol stones as outpatient adjunct but not in acute cholangitis management. Cholecystectomy is the definitive treatment.", tag:"norm" },
-   monitor_lft2:   { lbl:"Serial LFTs monitoring", q:"Monitor LFTs serially", a:"Serial LFTs ordered every 12–24 hours. Improvement in bilirubin and transaminases confirms adequate biliary drainage post-ERCP. Failure to improve suggests incomplete drainage or resistant organisms.", tag:"res" },
-   patient_ed2:    { lbl:"Patient education", q:"Counsel patient on diagnosis and treatment", a:"Patient and family counselled: acute ascending cholangitis explained, ERCP procedure and risks discussed, planned cholecystectomy outlined. Advised on dietary fat restriction post-discharge. Importance of cholecystectomy to prevent recurrence emphasised — 15–20% recurrence rate without definitive surgery.", tag:"res" },
-  }
- }
-};
 
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -997,8 +855,6 @@ function initNotes() {
 
 // ── Action execution ───────────────────────────────────────────────────────
 function tap(key, group) {
-  // Route to treatment phase if active
-  if (txPhase && group === "tx") { tapTx(key); return; }
   if (used.has(key) || cc.stepsUsed >= cc.maxSteps) return;
   const merged = getMergedActions(cc);
   const srcs = merged;
@@ -1185,8 +1041,7 @@ async function showEnd(correct) {
     ${missed.length?`<div class="rsec"><div class="rst">Critical findings missed (${missed.length})</div><ul class="rlist">${missed.map(v=>`<li class="bad">✗ ${v.lbl}</li>`).join('')}</ul></div>`:''}
     ${unnecessary.length?`<div class="rsec"><div class="rst">Unnecessary tests (${unnecessary.length})</div><ul class="rlist">${unnecessary.map(k=>`<li class="m">− ${all[k].lbl}</li>`).join('')}</ul></div>`:''}
     <div class="rsec"><div class="rst">Optimal pathway</div><ul class="rlist">${cc.path.map(s=>`<li class="m">→ ${s}</li>`).join('')}</ul></div>
-    ${TREATMENTS[cc.id] ? `<button class="btn-end" style="background:#3B6D11;color:white;margin-top:6px" onclick="startTreatment()">▸ Continue to Management</button>` : ""}
-    <button class="btn-end pr" onclick="showSel()" style="margin-top:6px">Try another case</button>
+    <button class="btn-end pr" onclick="showSel()">Try another case</button>
     <button class="btn-end sc" onclick="restart()">Retry this case</button>
   </div>`;
   document.getElementById('ov').innerHTML = '';
@@ -1245,190 +1100,6 @@ function load(idx) {
   closeSug();
 }
 
-
-
-// ── Treatment Phase State ──────────────────────────────────────────────────
-let txPhase = false;
-let txData = null;
-let txUsed = new Set();
-let txStepsUsed = 0;
-let txAllActions = [];
-
-// ── Enter treatment phase ──────────────────────────────────────────────────
-function startTreatment() {
-  document.getElementById('ov').innerHTML = '';
-  txPhase = true;
-  txData = TREATMENTS[cc.id];
-  txUsed = new Set();
-  txStepsUsed = 0;
-
-  // Update header
-  document.getElementById('stL').textContent = txData.maxSteps;
-  document.getElementById('dgL').textContent = '—';
-  document.getElementById('pb').style.cssText = 'width:100%;background:#3B6D11';
-
-  // Update notes header to show treatment phase
-  document.getElementById('ptCC').textContent = '▸ Treatment phase';
-  document.getElementById('ptCC').style.color = '#3B6D11';
-
-  // Clear notes sections for treatment
-  ['nHist','nExam','nLabs','nImg'].forEach(id => {
-    document.getElementById(id).innerHTML = '<span class="notes-empty">Nothing ordered yet</span>';
-  });
-  document.getElementById('nVitals').innerHTML = '<div class="note-entry"><div class="note-dot norm"></div><div class="note-text"><strong>Phase:</strong> Acute management</div></div>';
-
-  // Update note section labels
-  const labels = document.querySelectorAll('.notes-slbl');
-  if (labels[1]) labels[1].textContent = 'Drugs';
-  if (labels[2]) labels[2].textContent = 'Procedures';
-  if (labels[3]) labels[3].textContent = 'Referrals';
-  if (labels[4]) labels[4].textContent = 'Education';
-
-  // Change diagnosis button to "End case"
-  document.getElementById('diagBtn').textContent = 'Finish';
-  document.getElementById('diagBtn').onclick = finishTreatment;
-  document.getElementById('diagInput').style.display = 'none';
-  document.querySelectorAll('.adot').forEach(d => d.style.display = 'none');
-
-  // Clear timeline and start treatment
-  document.getElementById('tl').innerHTML = '';
-  addMsg('system','DxArena',`<strong>${txData.title}</strong>`,'res');
-  addMsg('system','Clinical situation', txData.intro, 'res');
-
-  // Build treatment action index
-  buildTxActionIndex();
-
-  // Enable search
-  const si = document.getElementById('searchInput');
-  si.disabled = false;
-  si.value = '';
-  si.placeholder = 'Order a treatment, drug, or referral — e.g. "nimodipine", "IV fluids", "neurosurgery"';
-  closeSug();
-}
-
-function buildTxActionIndex() {
-  txAllActions = [];
-  Object.entries(txData.actions).forEach(([k, v]) => {
-    if (!txUsed.has(k)) txAllActions.push({
-      key: k, group: 'tx', label: v.lbl, cat: 'Treatment',
-      search: [v.lbl, v.q||'', v.a||'', 'treatment management drug'].join(' ').toLowerCase()
-    });
-  });
-  // Override global allActions so search uses treatment actions
-  allActions = txAllActions;
-}
-
-function tapTx(key) {
-  if (txUsed.has(key) || txStepsUsed >= txData.maxSteps) return;
-  const entry = txData.actions[key]; if (!entry) return;
-  txUsed.add(key);
-  closeSug();
-  addMsg('user','You', entry.q, 'act');
-  setTimeout(() => {
-    addMsg('system','Chart', entry.a, entry.tag || 'res');
-    addTxNote(entry);
-    consumeTxStep();
-    buildTxActionIndex();
-  }, 350);
-}
-
-function addTxNote(entry) {
-  // Route to appropriate notes section based on tag/content
-  let targetId = 'nHist'; // drugs
-  const lbl = entry.lbl.toLowerCase();
-  if (lbl.includes('referral') || lbl.includes('admit') || lbl.includes('icu') || lbl.includes('rehabilitation')) targetId = 'nImg';
-  else if (lbl.includes('ercp') || lbl.includes('pci') || lbl.includes('angiogram') || lbl.includes('surgery') || lbl.includes('biopsy')) targetId = 'nLabs';
-  else if (lbl.includes('counsel') || lbl.includes('education') || lbl.includes('patient') || lbl.includes('monitor') || lbl.includes('follow')) targetId = 'nExam';
-
-  const el = document.getElementById(targetId);
-  const empty = el.querySelector('.notes-empty'); if (empty) empty.remove();
-  let summary = entry.a.split('. ').slice(0,2).join('. ').trim();
-  if (summary.length > 130) summary = summary.slice(0,127) + '…';
-  const row = document.createElement('div'); row.className = 'note-entry';
-  row.innerHTML = `<div class="note-dot ${entry.tag||'res'}"></div><div class="note-text"><strong>${entry.lbl}:</strong> ${summary}</div>`;
-  el.appendChild(row);
-  document.querySelector('.notes-body').scrollTop = 9999;
-}
-
-function consumeTxStep() {
-  txStepsUsed++;
-  const left = txData.maxSteps - txStepsUsed;
-  document.getElementById('stL').textContent = left;
-  const pct = left / txData.maxSteps * 100;
-  const pb = document.getElementById('pb');
-  pb.style.width = pct + '%';
-  pb.style.background = pct > 50 ? '#3B6D11' : pct > 25 ? '#BA7517' : '#E24B4A';
-  if (left <= 0) {
-    document.getElementById('searchInput').disabled = true;
-    addMsg('system','System','All management steps used. Click Finish to see your debrief.','warn');
-  }
-}
-
-function finishTreatment() {
-  // Score treatment phase
-  const optimal = txData.optimal;
-  const optimalCount = optimal.length;
-  const critActions = Object.entries(txData.actions).filter(([,v])=>v.tag==='crit').map(([k])=>k);
-  const foundCrit = critActions.filter(k=>txUsed.has(k));
-  const unnecessary = Array.from(txUsed).filter(k=>txData.actions[k]?.tag==='norm');
-  const missedCrit = critActions.filter(k=>!txUsed.has(k));
-
-  const txScore = Math.min(100, Math.round(
-    (foundCrit.length / Math.max(critActions.length,1)) * 70 +
-    Math.max(0, txData.maxSteps - txStepsUsed) * 2 -
-    unnecessary.length * 5
-  ));
-
-  const el = document.createElement('div'); el.className='overlay';
-  el.innerHTML=`<div class="modal">
-    <h2>✓ Case fully complete</h2>
-    <p class="msub">Diagnosis and management debrief.</p>
-    <div class="score-box">
-      <div class="score-num" style="color:#3B6D11">${txScore}</div>
-      <div class="score-grade" style="color:#3B6D11">Management score</div>
-      <div class="score-lbl">${txStepsUsed}/${txData.maxSteps} steps used · ${foundCrit.length}/${critActions.length} critical actions taken</div>
-    </div>
-    <div class="rsec"><div class="rst">Key learning</div><div class="rexp">${txData.learn}</div></div>
-    ${foundCrit.length?`<div class="rsec"><div class="rst">Critical treatments you initiated (${foundCrit.length})</div><ul class="rlist">
-      ${foundCrit.map(k=>`<li class="g">✓ ${txData.actions[k].lbl}</li>`).join('')}
-    </ul></div>`:''}
-    ${missedCrit.length?`<div class="rsec"><div class="rst">Critical treatments you missed (${missedCrit.length})</div><ul class="rlist">
-      ${missedCrit.map(k=>`<li class="bad">✗ ${txData.actions[k].lbl}</li>`).join('')}
-    </ul></div>`:''}
-    ${unnecessary.length?`<div class="rsec"><div class="rst">Unnecessary / not indicated (${unnecessary.length})</div><ul class="rlist">
-      ${unnecessary.map(k=>`<li class="m">− ${txData.actions[k].lbl}</li>`).join('')}
-    </ul></div>`:''}
-    <div class="rsec"><div class="rst">Optimal management pathway</div><ul class="rlist">
-      ${txData.optimal.map(s=>`<li class="m">→ ${s}</li>`).join('')}
-    </ul></div>
-    <button class="btn-end pr" onclick="showSel()">Try another case</button>
-    <button class="btn-end sc" onclick="restartFull()">Restart from diagnosis</button>
-  </div>`;
-  document.getElementById('ov').innerHTML = '';
-  document.getElementById('ov').appendChild(el);
-}
-
-function restartFull() {
-  txPhase = false;
-  document.getElementById('ov').innerHTML = '';
-  // Reset search bar
-  const si = document.getElementById('searchInput');
-  si.placeholder = 'Order a test or ask a question — e.g. "CT head", "family history", "troponin"';
-  // Reset diagnosis bar
-  document.getElementById('diagInput').style.display = '';
-  document.querySelectorAll('.adot').forEach(d => d.style.display = '');
-  document.getElementById('diagBtn').textContent = 'Diagnose';
-  document.getElementById('diagBtn').onclick = doDiag;
-  // Reset note labels
-  const labels = document.querySelectorAll('.notes-slbl');
-  if (labels[1]) labels[1].textContent = 'History';
-  if (labels[2]) labels[2].textContent = 'Exam';
-  if (labels[3]) labels[3].textContent = 'Labs';
-  if (labels[4]) labels[4].textContent = 'Imaging';
-  load(CASES.indexOf(cc));
-}
-
-}); // end window.onload
 </script>
 </body>
 </html>
