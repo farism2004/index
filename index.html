@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DxArena — Clinical Reasoning Arena</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F0EEE8;color:#1a1a1a;height:100vh;overflow:hidden}
@@ -262,6 +262,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div id="ov"></div>
 
 <script>
+
 // ── Supabase ────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://vyngrqvucmhqhnbrfkgh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bmdycXZ1Y21ocWhuYnJma2doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzkzNDAsImV4cCI6MjA5MTg1NTM0MH0.U64gHzArhKOObecV1Jt-Gxh94IPNWK8OGNYVTuzNi5w';
@@ -290,9 +291,11 @@ async function doLogin() {
   const pass = document.getElementById('loginPassword').value;
   if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
   clearAuthError(); setAuthBtn(true);
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-  setAuthBtn(false);
-  if (error) showAuthError(error.message);
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    setAuthBtn(false);
+    if (error) showAuthError(error.message);
+  } catch(e) { setAuthBtn(false); showAuthError('Connection error — please try again.'); }
 }
 
 async function doSignup() {
@@ -301,14 +304,16 @@ async function doSignup() {
   if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
   if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
   clearAuthError(); setAuthBtn(true);
-  const { error } = await sb.auth.signUp({ email, password: pass });
-  setAuthBtn(false);
-  if (error) { showAuthError(error.message); return; }
-  const el = document.getElementById('authError');
-  el.textContent = '✓ Account created! You can now sign in.';
-  el.style.background = '#EAF3DE'; el.style.color = '#27500A';
-  el.className = 'auth-error show';
-  switchAuth('login');
+  try {
+    const { error } = await sb.auth.signUp({ email, password: pass });
+    setAuthBtn(false);
+    if (error) { showAuthError(error.message); return; }
+    const el = document.getElementById('authError');
+    el.textContent = '✓ Account created! You can now sign in.';
+    el.style.background = '#EAF3DE'; el.style.color = '#27500A';
+    el.className = 'auth-error show';
+    switchAuth('login');
+  } catch(e) { setAuthBtn(false); showAuthError('Connection error — please try again.'); }
 }
 
 async function doSignOut() {
@@ -334,21 +339,18 @@ async function loadProfile() {
 async function saveAttempt(correct, score) {
   if (!currentUser) return 0;
   const pts = correct ? Math.max(10, score) : 5;
-  await sb.from('case_attempts').insert({
-    user_id: currentUser.id,
-    case_id: cc.id,
-    case_title: cc.title,
-    case_category: cc.cat,
-    score, correct,
-    steps_used: cc.stepsUsed,
-    max_steps: cc.maxSteps,
-    diag_attempts: dAttempts
-  });
-  await sb.from('profiles').update({
-    total_points: (userProfile?.total_points || 0) + pts,
-    cases_completed: (userProfile?.cases_completed || 0) + 1
-  }).eq('id', currentUser.id);
-  await loadProfile();
+  try {
+    await sb.from('case_attempts').insert({
+      user_id: currentUser.id, case_id: cc.id, case_title: cc.title,
+      case_category: cc.cat, score, correct,
+      steps_used: cc.stepsUsed, max_steps: cc.maxSteps, diag_attempts: dAttempts
+    });
+    await sb.from('profiles').update({
+      total_points: (userProfile?.total_points || 0) + pts,
+      cases_completed: (userProfile?.cases_completed || 0) + 1
+    }).eq('id', currentUser.id);
+    await loadProfile();
+  } catch(e) { console.error('Save attempt failed:', e); }
   return pts;
 }
 
@@ -1426,6 +1428,7 @@ function restartFull() {
   load(CASES.indexOf(cc));
 }
 
+}); // end window.onload
 </script>
 </body>
 </html>
