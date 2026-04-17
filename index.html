@@ -262,6 +262,175 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div id="ov"></div>
 
 <script>
+// ── Supabase ────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://vyngrqvucmhqhnbrfkgh.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bmdycXZ1Y21ocWhuYnJma2doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzkzNDAsImV4cCI6MjA5MTg1NTM0MH0.U64gHzArhKOObecV1Jt-Gxh94IPNWK8OGNYVTuzNi5w';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let userProfile = null;
+
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  el.textContent = msg;
+  el.style.background = '#FCEBEB'; el.style.color = '#791F1F';
+  el.className = 'auth-error show';
+}
+function clearAuthError() { document.getElementById('authError').className = 'auth-error'; }
+function setAuthBtn(disabled) { document.querySelectorAll('.auth-btn').forEach(b => b.disabled = disabled); }
+
+function switchAuth(view) {
+  clearAuthError();
+  document.getElementById('loginView').style.display = view === 'login' ? 'block' : 'none';
+  document.getElementById('signupView').style.display = view === 'signup' ? 'block' : 'none';
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
+  clearAuthError(); setAuthBtn(true);
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  setAuthBtn(false);
+  if (error) showAuthError(error.message);
+}
+
+async function doSignup() {
+  const email = document.getElementById('signupEmail').value.trim();
+  const pass = document.getElementById('signupPassword').value;
+  if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
+  if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+  clearAuthError(); setAuthBtn(true);
+  const { error } = await sb.auth.signUp({ email, password: pass });
+  setAuthBtn(false);
+  if (error) { showAuthError(error.message); return; }
+  const el = document.getElementById('authError');
+  el.textContent = '✓ Account created! You can now sign in.';
+  el.style.background = '#EAF3DE'; el.style.color = '#27500A';
+  el.className = 'auth-error show';
+  switchAuth('login');
+}
+
+async function doSignOut() {
+  await sb.auth.signOut();
+  document.getElementById('ov').innerHTML = '';
+  document.getElementById('mainApp').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+  currentUser = null; userProfile = null;
+}
+
+async function loadProfile() {
+  if (!currentUser) return;
+  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  userProfile = data;
+  if (data) {
+    const initials = (data.email || '?')[0].toUpperCase();
+    document.getElementById('userAvatar').textContent = initials;
+    document.getElementById('userName').textContent = data.email.split('@')[0];
+    document.getElementById('userPts').textContent = (data.total_points || 0) + ' pts';
+  }
+}
+
+async function saveAttempt(correct, score) {
+  if (!currentUser) return 0;
+  const pts = correct ? Math.max(10, score) : 5;
+  await sb.from('case_attempts').insert({
+    user_id: currentUser.id,
+    case_id: cc.id,
+    case_title: cc.title,
+    case_category: cc.cat,
+    score, correct,
+    steps_used: cc.stepsUsed,
+    max_steps: cc.maxSteps,
+    diag_attempts: dAttempts
+  });
+  await sb.from('profiles').update({
+    total_points: (userProfile?.total_points || 0) + pts,
+    cases_completed: (userProfile?.cases_completed || 0) + 1
+  }).eq('id', currentUser.id);
+  await loadProfile();
+  return pts;
+}
+
+async function showProfile() {
+  if (!currentUser) return;
+  await loadProfile();
+  const { data: attempts } = await sb.from('case_attempts')
+    .select('*').eq('user_id', currentUser.id)
+    .order('completed_at', { ascending: false }).limit(20);
+  const total = attempts?.length || 0;
+  const passed = attempts?.filter(a => a.correct).length || 0;
+  const cats = {};
+  (attempts || []).forEach(a => {
+    if (!cats[a.case_category]) cats[a.case_category] = { total: 0, passed: 0 };
+    cats[a.case_category].total++;
+    if (a.correct) cats[a.case_category].passed++;
+  });
+  const maxCat = Math.max(...Object.values(cats).map(c => c.total), 1);
+  const el = document.createElement('div'); el.className = 'overlay';
+  el.innerHTML = `<div class="modal">
+    <div class="profile-header">
+      <div class="profile-avatar">${(userProfile?.email || '?')[0].toUpperCase()}</div>
+      <div>
+        <div class="profile-name">${userProfile?.email?.split('@')[0] || 'User'}</div>
+        <div class="profile-email">${userProfile?.email || ''}</div>
+        <div class="profile-joined">Member since ${new Date(userProfile?.created_at || Date.now()).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-card-val">${userProfile?.total_points || 0}</div><div class="stat-card-lbl">Total points</div></div>
+      <div class="stat-card"><div class="stat-card-val">${total}</div><div class="stat-card-lbl">Cases played</div></div>
+      <div class="stat-card"><div class="stat-card-val">${total ? Math.round(passed / total * 100) : 0}%</div><div class="stat-card-lbl">Pass rate</div></div>
+    </div>
+    ${Object.keys(cats).length ? `<div class="history-section"><div class="history-title">By specialty</div><div class="cat-row">
+      ${Object.entries(cats).map(([cat, d]) => `<div class="cat-card">
+        <div class="cat-name">${cat}</div>
+        <div class="cat-count">${d.total} case${d.total > 1 ? 's' : ''} · ${Math.round(d.passed / d.total * 100)}% pass</div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(d.total / maxCat * 100)}%"></div></div>
+      </div>`).join('')}
+    </div></div>` : ''}
+    <div class="history-section"><div class="history-title">Recent cases</div>
+      ${(attempts || []).slice(0, 8).map(a => `<div class="history-item">
+        <div>
+          <div class="history-case">${a.case_title} <span style="font-size:11px;color:#888;font-weight:400">· ${a.case_category}</span></div>
+          <div class="history-meta">${new Date(a.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · ${a.steps_used}/${a.max_steps} steps</div>
+        </div>
+        <div class="history-score ${a.correct ? 'pass' : 'fail'}">${a.score}</div>
+      </div>`).join('') || '<div style="color:#aaa;font-size:13px">No cases played yet.</div>'}
+    </div>
+    <button class="btn-signout" onclick="doSignOut()">Sign out</button>
+    <button class="btn-end sc" onclick="document.getElementById('ov').innerHTML=''" style="margin-top:6px">Close</button>
+  </div>`;
+  document.getElementById('ov').innerHTML = '';
+  document.getElementById('ov').appendChild(el);
+}
+
+// ── Auth state listener ─────────────────────────────────────────────────────
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    currentUser = session.user;
+    await loadProfile();
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    if (!cc) load(0);
+  } else {
+    currentUser = null;
+    document.getElementById('authScreen').classList.remove('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+  }
+});
+
+// Enter key on auth inputs
+document.addEventListener('DOMContentLoaded', () => {
+  ['loginEmail','loginPassword'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  });
+  ['signupEmail','signupPassword'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') doSignup(); });
+  });
+});
+
+// ── Case data ───────────────────────────────────────────────────────────────
 const CASES = [
  {
   id:1,title:"Case #1",cat:"Neurology",dif:"Beginner",maxSteps:12,
