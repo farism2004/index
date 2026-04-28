@@ -189,11 +189,16 @@
     <div class="bottom-bar">
       <div id="sugList" class="suggestions"></div>
       <div class="bottom-row">
-        <input id="searchInput" class="search-input" type="text" autocomplete="off" placeholder='Order a test or ask a question — e.g. "CT head", "family history", "troponin"' />
+        <input id="searchInput" class="search-input" type="text" autocomplete="off" placeholder='Search or order — e.g. "CT head", "troponin", "family history"' />
         <div style="width:1px;height:28px;background:#e5e3da;flex-shrink:0"></div>
         <input id="diagInput" class="diag-input" type="text" placeholder="Enter diagnosis..." />
         <div class="adots" id="adots"><div class="adot on"></div><div class="adot on"></div><div class="adot on"></div></div>
         <button class="btn-diag" id="diagBtn" onclick="doDiag()">Diagnose</button>
+      </div>
+      <div class="bottom-row" style="margin-top:0">
+        <input id="aiInput" class="search-input" type="text" autocomplete="off" placeholder='Ask anything freely — e.g. "Does the pain radiate?", "What does the patient look like?"' style="flex:1" />
+        <button onclick="doAI()" id="aiBtn" style="background:#534AB7;color:white;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Ask AI</button>
+        <div id="aiStatus" style="font-size:11px;color:#888;white-space:nowrap"></div>
       </div>
     </div>
   </div>
@@ -363,6 +368,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('loginEmail').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
   document.getElementById('signupPassword').addEventListener('keydown', e => { if(e.key==='Enter') doSignup(); });
   document.getElementById('diagInput').addEventListener('keydown', e => { if(e.key==='Enter') doDiag(); });
+  document.getElementById('aiInput').addEventListener('keydown', e => { if(e.key==='Enter') doAI(); });
   document.getElementById('searchInput').addEventListener('focus', function() { renderSug(this.value); });
   document.getElementById('searchInput').addEventListener('input', function() { renderSug(this.value); });
   document.getElementById('searchInput').addEventListener('keydown', function(e) {
@@ -452,12 +458,12 @@ const CASES = [
    abdo:{q:"Abdominal exam",a:"Soft, non-tender. No hepatomegaly. No pulsatile mass.",tag:"norm",lbl:"Abdominal exam"}
   },
   labs:{
-   troponin:{q:"Order Troponin I",a:"Troponin I: 4.8 ng/mL — CRITICALLY ELEVATED (normal <0.04). Consistent with significant myocardial injury. Repeat in 3 hours.",tag:"crit",lbl:"Troponin I (cardiac enzymes)"},
-   bnp:{q:"Order BNP",a:"BNP: 420 pg/mL (elevated — normal <100). Consistent with early heart failure component.",tag:"res",lbl:"BNP / NT-proBNP"},
+   troponin:{q:"Order Troponin I",a:"Troponin I: 4.8 ng/mL (normal <0.04 ng/mL). Repeat in 3 hours to assess trend.",tag:"crit",lbl:"Troponin I (cardiac enzymes)"},
+   bnp:{q:"Order BNP",a:"BNP: 420 pg/mL (normal <100 pg/mL).",tag:"res",lbl:"BNP / NT-proBNP"},
    cbc:{q:"Order CBC",a:"WBC 12.1, Hgb 12.8, Plt 198. Mild stress leukocytosis.",tag:"res",lbl:"CBC"},
    bmp:{q:"Order BMP",a:"Na 138, K 3.8, Cr 1.1, Glucose 145 (mildly elevated — stress response). BUN 16.",tag:"res",lbl:"BMP"},
    coags:{q:"Order coagulation studies",a:"PT 12.4s, INR 1.0, PTT 27s. Normal.",tag:"norm",lbl:"Coagulation studies"},
-   lipids:{q:"Order lipid panel",a:"Total cholesterol 248, LDL 171, HDL 38, Triglycerides 196. Dyslipidemia confirmed.",tag:"res",lbl:"Lipid panel"}
+   lipids:{q:"Order lipid panel",a:"Total cholesterol 248 mg/dL, LDL 171 mg/dL, HDL 38 mg/dL, Triglycerides 196 mg/dL.",tag:"res",lbl:"Lipid panel"}
   },
   img:{
    ecg:{q:"Order ECG (12-lead STAT)",a:"ST elevations >2mm in leads V1, V2, V3, V4. Reciprocal ST depressions in II, III, aVF. Q waves developing in V1–V2. Rate 102 bpm, regular rhythm.",tag:"crit",lbl:"ECG (12-lead STAT)"},
@@ -499,11 +505,10 @@ const CASES = [
    bmp:{q:"Order BMP",a:"Cr 1.2 (mildly elevated above his baseline of 0.9). BUN 18. Na 138, K 4.1. CO2 22. Glucose 98.",tag:"res",lbl:"BMP"},
    cbc:{q:"Order CBC",a:"WBC 11.8 (mild leukocytosis). Hgb 15.2, Plt 242.",tag:"res",lbl:"CBC"},
    ucx:{q:"Order urine culture",a:"No organisms on gram stain. Culture sent — result pending 48 hours.",tag:"norm",lbl:"Urine culture"},
-   psa:{q:"Order PSA",a:"PSA 1.1 ng/mL — within normal limits for age.",tag:"norm",lbl:"PSA"}
   },
   img:{
    ct:{q:"Order CT abdomen and pelvis without contrast",a:"5mm calculus identified at the right ureterovesical junction (UVJ). Mild right hydronephrosis and hydroureter proximal to the stone. No perinephric fat stranding.",tag:"crit",lbl:"CT Abdomen/Pelvis (non-contrast)"},
-   kub:{q:"Order KUB X-ray",a:"Faint calcification visible in the right lower pelvis. Limited sensitivity (~50%) compared to CT. Suggestive but not diagnostic.",tag:"res",lbl:"KUB X-ray (Kidney-Ureter-Bladder)"},
+   kub:{q:"Order KUB X-ray",a:"Faint calcification visible in the right lower pelvis. Sensitivity of plain film for urolithiasis is limited (~50%).",tag:"res",lbl:"KUB X-ray (Kidney-Ureter-Bladder)"},
    us:{q:"Order renal ultrasound",a:"Mild right hydronephrosis present. No stones directly visualized — ultrasound has poor sensitivity (~45%) for ureteral stones. Useful for ruling out other pathology.",tag:"res",lbl:"Renal ultrasound"},
    cxr:{q:"Order chest X-ray",a:"No acute cardiopulmonary process. Normal.",tag:"norm",lbl:"Chest X-ray"}
   }
@@ -534,13 +539,13 @@ const CASES = [
    jaun:{q:"Assess jaundice and skin",a:"Scleral icterus clearly present. Jaundice visible on skin, palms. No spider angiomata. No palmar erythema. No caput medusae.",tag:"crit",lbl:"Jaundice / skin assessment"},
    gen:{q:"General appearance and hemodynamic assessment",a:"Ill-appearing, diaphoretic, visibly uncomfortable. Tachycardic (118 bpm). Hypotensive (102/68 mmHg). Alert but disoriented to time.",tag:"crit",lbl:"General appearance & hemodynamics"},
    heart:{q:"Cardiac exam",a:"Tachycardic, regular rhythm. No murmurs. Peripheral pulses weak.",tag:"res",lbl:"Cardiac exam"},
-   pulm:{q:"Pulmonary exam",a:"Tachypneic. Lungs clear to auscultation. No crackles.",tag:"norm",lbl:"Pulmonary exam"}
+   pulm:{q:"Pulmonary exam",a:"Tachypneic at 22 breaths/min. Lungs clear to auscultation bilaterally. No crackles or wheeze.",tag:"res",lbl:"Pulmonary exam"}
   },
   labs:{
    lft:{q:"Order LFTs",a:"AST 285, ALT 310 (both elevated). Total bilirubin 8.4 mg/dL; direct bilirubin 6.2 mg/dL. Alkaline phosphatase 420 (markedly elevated). GGT 380. Albumin 3.1 (low).",tag:"crit",lbl:"LFTs (Liver Function Tests)"},
    cbc:{q:"Order CBC",a:"WBC 21.4 with 88% neutrophils and band forms. Hgb 12.1 (mild anemia). Platelets 98,000 (low).",tag:"crit",lbl:"CBC"},
    bmp:{q:"Order BMP",a:"Cr 1.8 (elevated). Na 132, K 3.5. HCO3 19. Glucose 138.",tag:"res",lbl:"BMP"},
-   blood_cx:{q:"Order blood cultures",a:"Two sets obtained from separate sites. Gram-negative rods on preliminary smear. Final speciation pending.",tag:"crit",lbl:"Blood cultures (x2 sets)"},
+   blood_cx:{q:"Order blood cultures",a:"Two sets obtained from separate sites before antibiotic administration. Gram stain pending. Final culture result expected at 48–72 hours.",tag:"crit",lbl:"Blood cultures (x2 sets)"},
    coags:{q:"Order coagulation studies",a:"PT 18.2s, INR 1.6 (elevated). PTT 42s. Fibrinogen 180 (low-normal). D-dimer elevated.",tag:"crit",lbl:"Coagulation studies / DIC panel"},
    lipase:{q:"Order lipase",a:"Lipase 68 U/L — within normal limits.",tag:"res",lbl:"Lipase"},
    lactate:{q:"Order serum lactate",a:"Lactate 4.2 mmol/L (normal <2.0 mmol/L).",tag:"crit",lbl:"Serum lactate"}
@@ -928,22 +933,42 @@ function tap(key, group) {
 // ── Search ─────────────────────────────────────────────────────────────────
 function buildActionIndex() {
   const merged = getMergedActions(cc);
+  const caseKeys = new Set([
+    ...Object.keys(cc.hist||{}),
+    ...Object.keys(cc.exam||{}),
+    ...Object.keys(cc.labs||{}),
+    ...Object.keys(cc.img||{})
+  ]);
   allActions=[];
   [['hist','History'],['exam','Exam'],['labs','Labs'],['img','Imaging']].forEach(([grp,cat])=>{
     Object.entries(merged[grp]).forEach(([k,v])=>{
-      if (!used.has(k)) allActions.push({key:k,group:grp,label:v.lbl||k,cat,
-        search:[(v.lbl||k),(v.q||''),(v.a||''),cat].join(' ').toLowerCase()});
+      if (!used.has(k)) allActions.push({
+        key:k, group:grp, label:v.lbl||k, cat,
+        isCase: caseKeys.has(k),
+        search:[(v.lbl||k),(v.q||''),(v.aliases||''),cat].join(' ').toLowerCase()
+      });
     });
   });
 }
 function scoreMatch(a, q) {
   if (!q) return 1;
-  const s=a.search;
-  if (a.label.toLowerCase().includes(q)) return 100;
-  if (s.includes(q)) return 80;
-  const words=q.split(/\s+/).filter(w=>w.length>=2);
-  if (words.length>1&&words.every(w=>s.includes(w))) return 60;
-  if (words.filter(w=>w.length>=3).some(w=>s.includes(w))) return 30;
+  const s = a.search;
+  const lbl = a.label.toLowerCase();
+  const caseBoost = a.isCase ? 10 : 0;
+  // Exact label match - highest priority
+  if (lbl === q) return 100 + caseBoost;
+  // Label contains query
+  if (lbl.includes(q)) return 90 + caseBoost;
+  // Query contains label (e.g. typing "ecg 12 lead" matches "ecg")
+  if (q.includes(lbl)) return 85 + caseBoost;
+  // Alias/question match
+  if (s.includes(q)) return 70 + caseBoost;
+  // All words match in search string
+  const words = q.split(/\s+/).filter(w=>w.length>=2);
+  if (words.length>1 && words.every(w=>s.includes(w))) return 55 + caseBoost;
+  // Any meaningful word matches label or aliases (NOT answer text to avoid false positives)
+  const labelAndAliases = (lbl + ' ' + (a.search.split(' ').slice(0,10).join(' '))).toLowerCase();
+  if (words.filter(w=>w.length>=3).some(w=>labelAndAliases.includes(w))) return 30 + caseBoost;
   return 0;
 }
 function highlight(str,q) {
@@ -1101,6 +1126,7 @@ function load(idx) {
   document.getElementById('diagBtn').disabled=false;
   document.querySelectorAll('.adot').forEach((d,i)=>{d.className='adot'+(i<3?' on':'');});
   closeSug();
+  resetAIHistory();
 }
 
 // ── Treatment Phase ────────────────────────────────────────────────────────
@@ -1125,6 +1151,7 @@ function startTreatment() {
   addMsg('system','DxArena',`<strong>${txData.title}</strong>`,'res');
   addMsg('system','Clinical situation',txData.intro,'res');
   buildTxActionIndex(); closeSug();
+  resetAIHistory();
 }
 function buildTxActionIndex() {
   txAllActions=[];
@@ -1189,6 +1216,64 @@ function finishTreatment() {
   </div>`;
   document.getElementById('ov').innerHTML=''; document.getElementById('ov').appendChild(el);
 }
+
+// ── AI Free-text ───────────────────────────────────────────────────────────
+let aiHistory = []; // maintains conversation history per case
+
+async function doAI() {
+  const inp = document.getElementById('aiInput');
+  const v = inp.value.trim();
+  if (!v) return;
+  if (cc && cc.stepsUsed >= cc.maxSteps) {
+    addMsg('system','System','No steps remaining.','warn'); return;
+  }
+  inp.value = '';
+  const btn = document.getElementById('aiBtn');
+  const status = document.getElementById('aiStatus');
+  btn.disabled = true;
+  status.textContent = 'Thinking...';
+
+  addMsg('user', 'You', v, 'act');
+
+  // Build system prompt based on current phase
+  const caseContext = cc ? `Patient: ${cc.pt.name}, ${cc.pt.age}yo ${cc.pt.sex}, presenting with "${cc.cc}".
+Vitals: ${JSON.stringify(cc.vitals)}.
+True diagnosis: "${cc.dx}" — do NOT reveal this directly or hint at it strongly.
+You are the clinical chart and patient. Respond to the clinician's question in 1-3 sentences.
+Be realistic and clinically accurate. Report raw findings only — no diagnostic conclusions.
+If asked about something not relevant to this case, give a normal/negative finding.` : 'You are a clinical chart simulator.';
+
+  // Add user message to history
+  aiHistory.push({ role: 'user', content: v });
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemPrompt: caseContext,
+        messages: aiHistory
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    // Add assistant response to history
+    aiHistory.push({ role: 'assistant', content: data.text });
+
+    addMsg('system', 'Chart (AI)', data.text, 'res');
+    if (cc && !txPhase) consumeStep();
+  } catch(e) {
+    addMsg('system', 'System', 'AI unavailable — ' + e.message, 'warn');
+    // Remove the failed user message from history
+    aiHistory.pop();
+  }
+  btn.disabled = false;
+  status.textContent = '';
+}
+
+function resetAIHistory() { aiHistory = []; }
+
 
 </script>
 </body>
