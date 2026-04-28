@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DxArena — Clinical Reasoning Arena</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -208,7 +208,15 @@ const SUPABASE_URL = 'https://vyngrqvucmhqhnbrfkgh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bmdycXZ1Y21ocWhuYnJma2doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzkzNDAsImV4cCI6MjA5MTg1NTM0MH0.U64gHzArhKOObecV1Jt-Gxh94IPNWK8OGNYVTuzNi5w';
 
 // Create client immediately — script is in <head> so it's already loaded
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let sb;
+try {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch(e) {
+  console.error('Supabase failed to load:', e);
+  document.addEventListener('DOMContentLoaded', () => {
+    showAuthError('Authentication service failed to load. Please refresh the page.');
+  });
+}
 
 let currentUser = null, userProfile = null;
 let cc = null, used = new Set(), dAttempts = 0;
@@ -230,6 +238,7 @@ function switchAuth(view) {
 }
 
 async function doLogin() {
+  if (!window.supabase || !sb) { showAuthError('Page still loading — please wait a moment and try again.'); return; }
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPassword').value;
   if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
@@ -345,6 +354,7 @@ async function showProfile() {
 
 // Setup on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
+  if (!sb) { console.error('Supabase not initialized'); return; }
   sb.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
       currentUser = session.user;
@@ -1268,3 +1278,4 @@ function resetAIHistory() { aiHistory = []; }
 </script>
 </body>
 </html>
+
