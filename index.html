@@ -24,7 +24,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .auth-switch{text-align:center;margin-top:1rem;font-size:13px;color:#666}
 .auth-switch a{color:#185FA5;font-weight:600;cursor:pointer;text-decoration:underline}
 .auth-err{border-radius:7px;padding:8px 11px;font-size:12px;margin-bottom:10px;display:none;font-weight:500}
-.app{display:none;grid-template-columns:260px 1fr;grid-template-rows:52px 1fr 90px;height:100vh;gap:1px;background:#D3D1C7}
+.app{display:none;grid-template-columns:260px 1fr;grid-template-rows:52px 1fr 115px;height:100vh;gap:1px;background:#D3D1C7}
 .topbar{grid-column:1/-1;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;border-bottom:1px solid #e5e3da}
 .logo{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
 .logo-icon{width:32px;height:28px;background:#185FA5;border-radius:7px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:800;letter-spacing:-.5px}
@@ -202,13 +202,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="sugList" class="suggestions"></div>
     <div class="bottom-row">
       <input id="searchInput" class="search-input" type="text" autocomplete="off"
-        placeholder='Search tests, or type any question and press Enter — e.g. "CT head", "does the pain radiate?", "what does the patient look like?"'>
+        placeholder='Search & order — e.g. "CT head", "troponin", "neuro exam"'>
       <div style="width:1px;height:28px;background:#e5e3da;flex-shrink:0"></div>
       <input id="diagInput" class="diag-input" type="text" placeholder="Enter diagnosis...">
       <div class="adots" id="adots"><div class="adot on"></div><div class="adot on"></div><div class="adot on"></div></div>
       <button class="btn-diag" id="diagBtn">Diagnose</button>
     </div>
-    <div style="font-size:11px;color:#888;text-align:right;min-height:16px" id="aiStatus"></div>
+    <div class="bottom-row">
+      <input id="aiInput" class="search-input" type="text" autocomplete="off"
+        placeholder='Ask the patient or chart anything — e.g. "Does the pain radiate?", "What does the patient look like?"'
+        style="border-color:#534AB7;background:#FAFAFE">
+      <button id="aiBtn" style="background:#534AB7;color:white;border:none;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Ask AI</button>
+      <span id="aiStatus" style="font-size:11px;color:#888;white-space:nowrap;min-width:80px"></span>
+    </div>
   </div>
 </div>
 
@@ -1301,6 +1307,23 @@ document.getElementById('searchInput').onkeydown = function(e) {
   } else if (e.key==='Escape') { closeSug(); }
 };
 document.addEventListener('click', e => { if(!e.target.closest('.bottom-bar')) closeSug(); });
+
+// AI input bar
+document.getElementById('aiBtn').onclick = function() {
+  const inp = document.getElementById('aiInput');
+  const q = inp.value.trim();
+  if (!q) return;
+  inp.value = '';
+  sendToAI(q);
+};
+document.getElementById('aiInput').onkeydown = function(e) {
+  if (e.key === 'Enter') {
+    const q = this.value.trim();
+    if (!q) return;
+    this.value = '';
+    sendToAI(q);
+  }
+};
 
 </script>
 </body>
