@@ -202,7 +202,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="sugList" class="suggestions"></div>
     <div class="bottom-row">
       <input id="searchInput" class="search-input" type="text" autocomplete="off"
-        placeholder='Order a test or ask anything — e.g. "CT head", "does it radiate?", "troponin"'>
+        placeholder='Search tests, or type any question and press Enter — e.g. "CT head", "does the pain radiate?", "what does the patient look like?"'>
       <div style="width:1px;height:28px;background:#e5e3da;flex-shrink:0"></div>
       <input id="diagInput" class="diag-input" type="text" placeholder="Enter diagnosis...">
       <div class="adots" id="adots"><div class="adot on"></div><div class="adot on"></div><div class="adot on"></div></div>
@@ -1009,7 +1009,7 @@ function renderSug(query) {
   const sug = document.getElementById('sugList');
   const q = (query||'').trim().toLowerCase();
   const src = txPhase ? txAllActions : allActions;
-  const scored = src.map(a => ({...a, score:scoreMatch(a,q)})).filter(a=>a.score>0).sort((a,b)=>b.score-a.score).slice(0,8);
+  const scored = src.map(a => ({...a, score:scoreMatch(a,q)})).filter(a=>a.score>=30).sort((a,b)=>b.score-a.score).slice(0,8);
   if (!scored.length) { sug.className='suggestions'; selIdx=-1; return; }
   sug.innerHTML = scored.map(m =>
     `<div class="sug-item" data-key="${m.key}" data-group="${m.group}">
@@ -1291,8 +1291,13 @@ document.getElementById('searchInput').onkeydown = function(e) {
     e.preventDefault();
     const items = document.getElementById('sugList').querySelectorAll('.sug-item');
     const target = selIdx>=0 ? items[selIdx] : items[0];
-    if (target) { tap(target.dataset.key, target.dataset.group); this.value=''; }
-    else if (this.value.trim()) { const q=this.value.trim(); this.value=''; closeSug(); sendToAI(q); }
+    if (target) {
+      // matched a predefined action — use it
+      tap(target.dataset.key, target.dataset.group); this.value='';
+    } else if (this.value.trim()) {
+      // no match — send to AI
+      const q = this.value.trim(); this.value=''; closeSug(); sendToAI(q);
+    }
   } else if (e.key==='Escape') { closeSug(); }
 };
 document.addEventListener('click', e => { if(!e.target.closest('.bottom-bar')) closeSug(); });
