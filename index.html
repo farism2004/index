@@ -352,16 +352,16 @@ async function showProfile() {
   document.getElementById('ov').appendChild(el);
 }
 
-// Setup on DOM ready
-document.addEventListener('DOMContentLoaded', function() {
+// Setup — called directly at end of script (DOM is ready since script is at bottom of body)
+function initSetup() {
 
-  // Wire all auth buttons here — avoids onclick/global scope issues
+  // Wire all auth buttons
   document.getElementById('loginBtn').addEventListener('click', doLogin);
   document.getElementById('signupBtn').addEventListener('click', doSignup);
   document.getElementById('toSignup').addEventListener('click', () => switchAuth('signup'));
   document.getElementById('toLogin').addEventListener('click', () => switchAuth('login'));
 
-  if (!sb) { console.error('Supabase not initialized'); return; }
+  if (!sb) { showAuthError('Auth service failed to load. Please refresh.'); return; }
   sb.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
       currentUser = session.user;
@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if(e.key==='Escape'){closeSug();}
   });
   document.addEventListener('click', e => { if(!e.target.closest('.bottom-bar')) closeSug(); });
-}); // end DOMContentLoaded
+} // end initSetup
 
 const CASES = [
  {
@@ -1281,6 +1281,22 @@ async function sendToAI(query) {
 
 function resetAIHistory() { aiHistory = []; }
 
+
+
+// Assign key functions to window for any inline handlers still in use
+window.doLogin = doLogin;
+window.doSignup = doSignup;
+window.doSignOut = doSignOut;
+window.switchAuth = switchAuth;
+window.showSel = showSel;
+window.doDiag = doDiag;
+window.showProfile = showProfile;
+window.load = load;
+window.restart = restart;
+window.startTreatment = startTreatment;
+window.finishTreatment = finishTreatment;
+
+initSetup();
 
 </script>
 </body>
