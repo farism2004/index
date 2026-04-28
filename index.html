@@ -24,8 +24,8 @@
         <input id="loginEmail" type="email" placeholder="you@example.com" style="width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;outline:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box" /></div>
       <div style="margin-bottom:14px"><label style="font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Password</label>
         <input id="loginPassword" type="password" placeholder="••••••••" style="width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;outline:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box" /></div>
-      <button onclick="doLogin()" style="width:100%;background:#185FA5;color:white;border:none;padding:11px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Sign in</button>
-      <div style="text-align:center;margin-top:1rem;font-size:13px;color:#666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">No account? <a onclick="switchAuth('signup')" style="color:#185FA5;font-weight:600;cursor:pointer">Sign up free</a></div>
+      <button id="loginBtn" style="width:100%;background:#185FA5;color:white;border:none;padding:11px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Sign in</button>
+      <div style="text-align:center;margin-top:1rem;font-size:13px;color:#666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">No account? <a id="toSignup" style="color:#185FA5;font-weight:600;cursor:pointer">Sign up free</a></div>
     </div>
 
     <div id="signupView" style="display:none">
@@ -35,8 +35,8 @@
         <input id="signupEmail" type="email" placeholder="you@example.com" style="width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;outline:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box" /></div>
       <div style="margin-bottom:14px"><label style="font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Password</label>
         <input id="signupPassword" type="password" placeholder="Min. 6 characters" style="width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;outline:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box" /></div>
-      <button onclick="doSignup()" style="width:100%;background:#185FA5;color:white;border:none;padding:11px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Create account</button>
-      <div style="text-align:center;margin-top:1rem;font-size:13px;color:#666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Already have an account? <a onclick="switchAuth('login')" style="color:#185FA5;font-weight:600;cursor:pointer">Sign in</a></div>
+      <button id="signupBtn" style="width:100%;background:#185FA5;color:white;border:none;padding:11px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Create account</button>
+      <div style="text-align:center;margin-top:1rem;font-size:13px;color:#666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Already have an account? <a id="toLogin" style="color:#185FA5;font-weight:600;cursor:pointer">Sign in</a></div>
     </div>
   </div>
 </div>
@@ -354,6 +354,13 @@ async function showProfile() {
 
 // Setup on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
+
+  // Wire all auth buttons here — avoids onclick/global scope issues
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('signupBtn').addEventListener('click', doSignup);
+  document.getElementById('toSignup').addEventListener('click', () => switchAuth('signup'));
+  document.getElementById('toLogin').addEventListener('click', () => switchAuth('login'));
+
   if (!sb) { console.error('Supabase not initialized'); return; }
   sb.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
@@ -1278,4 +1285,3 @@ function resetAIHistory() { aiHistory = []; }
 </script>
 </body>
 </html>
-
