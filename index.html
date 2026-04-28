@@ -4,398 +4,375 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DxArena — Clinical Reasoning Arena</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F0EEE8;color:#1a1a1a}
+.auth-wrap{position:fixed;inset:0;background:#F0EEE8;display:flex;align-items:center;justify-content:center;z-index:999}
+.auth-card{background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:380px;box-shadow:0 4px 32px rgba(0,0,0,.1)}
+.auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem}
+.auth-logo-icon{width:38px;height:34px;background:#185FA5;border-radius:9px;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:800}
+.auth-logo-text{font-size:20px;font-weight:800}
+.auth-logo-sub{font-size:12px;color:#888}
+.auth-title{font-size:18px;font-weight:700;margin-bottom:4px}
+.auth-sub{font-size:13px;color:#666;margin-bottom:1.25rem}
+.auth-label{font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:4px}
+.auth-input{width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;outline:none;font-family:inherit;margin-bottom:10px;display:block}
+.auth-input:focus{border-color:#185FA5;background:#fff}
+.auth-btn{width:100%;background:#185FA5;color:white;border:none;padding:11px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;display:block}
+.auth-btn:hover{background:#0C447C}
+.auth-btn:disabled{background:#aaa;cursor:default}
+.auth-switch{text-align:center;margin-top:1rem;font-size:13px;color:#666}
+.auth-switch a{color:#185FA5;font-weight:600;cursor:pointer;text-decoration:underline}
+.auth-err{border-radius:7px;padding:8px 11px;font-size:12px;margin-bottom:10px;display:none;font-weight:500}
+.app{display:none;grid-template-columns:260px 1fr;grid-template-rows:52px 1fr 90px;height:100vh;gap:1px;background:#D3D1C7}
+.topbar{grid-column:1/-1;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;border-bottom:1px solid #e5e3da}
+.logo{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.logo-icon{width:32px;height:28px;background:#185FA5;border-radius:7px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:800;letter-spacing:-.5px}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.badge-blue{background:#E6F1FB;color:#185FA5}.badge-amber{background:#FAEEDA;color:#854F0B}
+.badge-green{background:#EAF3DE;color:#3B6D11}.badge-red{background:#FCEBEB;color:#A32D2D}
+.user-pill{display:flex;align-items:center;gap:8px;background:#F5F3EE;border:1px solid #e5e3da;border-radius:20px;padding:4px 12px 4px 6px;cursor:pointer}
+.user-pill:hover{background:#e5e3da}
+.user-avatar{width:24px;height:24px;border-radius:50%;background:#185FA5;color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.user-name{font-size:12px;font-weight:600}.user-pts{font-size:11px;color:#185FA5;font-weight:700}
+.left-panel{background:#fff;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid #e5e3da}
+.notes-header{padding:10px .875rem 8px;border-bottom:1px solid #e5e3da;flex-shrink:0}
+.notes-title{font-size:13px;font-weight:700}.notes-pt{font-size:11px;color:#666;margin-top:1px}
+.notes-resources{padding:8px .875rem;border-bottom:1px solid #f0eeea;flex-shrink:0}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat-box{background:#F5F3EE;border-radius:8px;padding:9px;text-align:center}
+.stat-val{font-size:22px;font-weight:700}.stat-lbl{font-size:10px;color:#888;margin-top:1px}
+.pbar-track{height:4px;background:#e5e3da;border-radius:2px;margin-top:6px}
+.pbar-fill{height:4px;border-radius:2px;transition:width .4s,background .4s;background:#185FA5}
+.notes-body{flex:1;overflow-y:auto;padding:.75rem .875rem;display:flex;flex-direction:column;gap:12px}
+.notes-section{display:flex;flex-direction:column;gap:4px}
+.notes-slbl{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.07em;padding-bottom:4px;border-bottom:1px solid #f0eeea;margin-bottom:2px}
+.notes-empty{font-size:11.5px;color:#ccc;font-style:italic}
+.note-entry{display:flex;gap:6px;align-items:baseline;animation:fadein .3s ease}
+.note-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.note-dot.crit{background:#E24B4A}.note-dot.res{background:#185FA5}.note-dot.norm{background:#B4B2A9}
+.note-text{font-size:11.5px;color:#1a1a1a;line-height:1.55}
+.note-text strong{font-weight:700;color:#444}
+.center{background:#fff;display:flex;flex-direction:column;overflow:hidden}
+.timeline{flex:1;padding:.875rem 1rem;display:flex;flex-direction:column;gap:9px;overflow-y:auto}
+.msg{display:flex;gap:9px;align-items:flex-start;animation:fadein .25s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:2px}
+.av-u{background:#EEEDFE;color:#534AB7}.av-s{background:#E1F5EE;color:#0F6E56}.av-c{background:#FCEBEB;color:#A32D2D}
+.mb{flex:1}.mlbl{font-size:10px;color:#888;margin-bottom:2px;font-weight:600}
+.mt{font-size:13px;line-height:1.65;background:#F5F3EE;padding:9px 12px;border-radius:8px;color:#1a1a1a}
+.mt.crit{background:#FCEBEB;color:#791F1F;border-left:3px solid #E24B4A}
+.mt.norm{background:#EAF3DE;color:#27500A;border-left:3px solid #639922}
+.mt.res{background:#E6F1FB;color:#0C447C;border-left:3px solid #185FA5}
+.mt.act{background:#EEEDFE;color:#3C3489;border-left:3px solid #534AB7}
+.mt.warn{background:#FAEEDA;color:#633806;border-left:3px solid #BA7517}
+.bottom-bar{grid-column:2;background:#fff;border-top:1px solid #e5e3da;display:flex;flex-direction:column;justify-content:center;padding:8px 1rem;gap:6px}
+.bottom-row{display:flex;gap:8px;align-items:center}
+.search-input{flex:1;font-size:13px;padding:9px 13px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;color:#1a1a1a;outline:none;font-family:inherit}
+.search-input:focus{border-color:#185FA5;background:#fff;box-shadow:0 0 0 3px rgba(24,95,165,.1)}
+.diag-input{font-size:12px;padding:8px 11px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;color:#1a1a1a;outline:none;font-family:inherit;width:200px}
+.diag-input:focus{border-color:#3B6D11;background:#fff;box-shadow:0 0 0 3px rgba(59,109,17,.1)}
+.btn-diag{background:#3B6D11;color:white;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-diag:hover{background:#27500A}.btn-diag:disabled{background:#d3d1c7;color:#888;cursor:default}
+.adots{display:flex;gap:3px;align-items:center}
+.adot{width:7px;height:7px;border-radius:50%;background:#e5e3da}
+.adot.used{background:#E24B4A}.adot.on{background:#3B6D11}
+.suggestions{background:#fff;border:1px solid #d3d1c7;border-radius:8px;max-height:220px;overflow-y:auto;display:none;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
+.suggestions.open{display:block}
+.sug-item{padding:9px 13px;font-size:13px;cursor:pointer;border-bottom:.5px solid #f0eeea;display:flex;align-items:center;justify-content:space-between}
+.sug-item:last-child{border-bottom:none}
+.sug-item:hover,.sug-item.sel{background:#E6F1FB;color:#185FA5}
+.sug-item em{font-style:normal;font-weight:700;color:#185FA5}
+.sug-cat{font-size:10px;color:#888;margin-left:8px;flex-shrink:0;font-weight:600;text-transform:uppercase}
+.sug-item:hover .sug-cat,.sug-item.sel .sug-cat{color:#185FA5}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:#fff;border-radius:14px;padding:1.5rem;max-width:480px;width:92%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.25)}
+.modal h2{font-size:19px;font-weight:700;margin-bottom:4px}
+.msub{font-size:13px;color:#666;margin-bottom:1rem}
+.profile-header{display:flex;align-items:center;gap:14px;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid #f0eeea}
+.profile-avatar{width:52px;height:52px;border-radius:50%;background:#185FA5;color:white;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
+.profile-name{font-size:17px;font-weight:700}.profile-email{font-size:12px;color:#888;margin-top:2px}.profile-joined{font-size:11px;color:#aaa;margin-top:2px}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem}
+.stat-card{background:#F5F3EE;border-radius:10px;padding:12px;text-align:center}
+.stat-card-val{font-size:24px;font-weight:700;color:#185FA5}.stat-card-lbl{font-size:11px;color:#888;margin-top:2px}
+.history-section{margin-bottom:1rem}.history-title{font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.history-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:8px;background:#F5F3EE;margin-bottom:5px}
+.history-case{font-size:13px;font-weight:600}.history-meta{font-size:11px;color:#888;margin-top:2px}
+.history-score{font-size:14px;font-weight:700}.history-score.pass{color:#3B6D11}.history-score.fail{color:#A32D2D}
+.cat-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:1.25rem}
+.cat-card{background:#F5F3EE;border-radius:8px;padding:10px 12px}
+.cat-name{font-size:12px;font-weight:700}.cat-count{font-size:11px;color:#888;margin-top:2px}
+.cat-bar-track{height:3px;background:#e5e3da;border-radius:2px;margin-top:6px}
+.cat-bar-fill{height:3px;border-radius:2px;background:#185FA5}
+.btn-signout{width:100%;background:#F5F3EE;color:#A32D2D;border:1px solid #f0c0c0;padding:9px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-signout:hover{background:#FCEBEB}
+.score-box{text-align:center;padding:1rem;background:#F5F3EE;border-radius:10px;margin-bottom:1rem}
+.score-num{font-size:48px;font-weight:700;line-height:1}.score-grade{font-size:18px;font-weight:700;margin-top:4px}.score-lbl{font-size:13px;color:#666;margin-top:2px}
+.points-earned{background:#EAF3DE;border-radius:10px;padding:10px;text-align:center;margin-bottom:1rem}
+.points-earned-num{font-size:28px;font-weight:700;color:#3B6D11}.points-earned-lbl{font-size:12px;color:#3B6D11;margin-top:2px}
+.rst{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.rdiag{font-size:15px;font-weight:700;color:#185FA5;background:#E6F1FB;padding:10px 13px;border-radius:8px;margin-bottom:6px}
+.rexp{font-size:12.5px;color:#444;line-height:1.75}
+.rlist{list-style:none;display:flex;flex-direction:column;gap:3px}
+.rlist li{font-size:12.5px;padding:5px 10px;border-radius:7px}
+.rlist li.g{background:#EAF3DE;color:#27500A}.rlist li.m{background:#FAEEDA;color:#633806}.rlist li.bad{background:#FCEBEB;color:#791F1F}
+.rsec{margin-bottom:1rem}
+.btn-end{width:100%;padding:10px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;margin-top:6px}
+.btn-end.pr{background:#185FA5;color:white}.btn-end.pr:hover{background:#0C447C}
+.btn-end.sc{background:#F5F3EE;color:#1a1a1a;border:1px solid #d3d1c7}.btn-end.sc:hover{background:#e5e3da}
+.case-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:1rem}
+.ccard{background:#F5F3EE;border:1.5px solid #e5e3da;border-radius:10px;padding:13px;cursor:pointer;transition:all .15s}
+.ccard:hover{border-color:#185FA5;background:#E6F1FB}
+.ccard-t{font-size:13px;font-weight:700}.ccard-s{font-size:11px;color:#666;margin-top:2px;line-height:1.4}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#d3d1c7;border-radius:2px}
+</style>
 </head>
 <body>
 
-<!-- Auth Screen -->
-<div id="authScreen" style="position:fixed;inset:0;background:#F0EEE8;display:flex;align-items:center;justify-content:center;z-index:200;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-  <div style="background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:380px;box-shadow:0 4px 32px rgba(0,0,0,.1)">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem">
-      <div style="width:38px;height:34px;background:#185FA5;border-radius:9px;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:800">Dx</div>
-      <div><div style="font-size:20px;font-weight:800">DxArena</div><div style="font-size:12px;color:#888">Clinical Reasoning Arena</div></div>
+<!-- ── AUTH ─────────────────────────────────────────────────────────────── -->
+<div class="auth-wrap" id="authWrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">Dx</div>
+      <div><div class="auth-logo-text">DxArena</div><div class="auth-logo-sub">Clinical Reasoning Arena</div></div>
     </div>
-    <div id="authError" style="display:none;border-radius:7px;padding:8px 11px;font-size:12px;margin-bottom:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"></div>
-
+    <div id="authErr" class="auth-err"></div>
     <div id="loginView">
-      <div style="font-size:18px;font-weight:700;margin-bottom:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Welcome back</div>
-      <div style="font-size:13px;color:#666;margin-bottom:1.25rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Sign in to track your progress and scores.</div>
-      <div style="margin-bottom:10px"><label style="font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Email</label>
-        <input id="loginEmail" type="email" placeholder="you@example.com" style="width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;outline:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box" /></div>
-      <div style="margin-bottom:14px"><label style="font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Password</label>
-        <input id="loginPassword" type="password" placeholder="••••••••" style="width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;outline:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box" /></div>
-      <button id="loginBtn" style="width:100%;background:#185FA5;color:white;border:none;padding:11px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Sign in</button>
-      <div style="text-align:center;margin-top:1rem;font-size:13px;color:#666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">No account? <a id="toSignup" style="color:#185FA5;font-weight:600;cursor:pointer">Sign up free</a></div>
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-sub">Sign in to track your progress and scores.</div>
+      <label class="auth-label">Email</label>
+      <input class="auth-input" id="loginEmail" type="email" placeholder="you@example.com">
+      <label class="auth-label">Password</label>
+      <input class="auth-input" id="loginPassword" type="password" placeholder="••••••••">
+      <button class="auth-btn" id="loginBtn">Sign in</button>
+      <div class="auth-switch">No account? <a id="toSignup">Sign up free</a></div>
     </div>
-
     <div id="signupView" style="display:none">
-      <div style="font-size:18px;font-weight:700;margin-bottom:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Create your account</div>
-      <div style="font-size:13px;color:#666;margin-bottom:1.25rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Join DxArena and start sharpening your clinical reasoning.</div>
-      <div style="margin-bottom:10px"><label style="font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Email</label>
-        <input id="signupEmail" type="email" placeholder="you@example.com" style="width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;outline:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box" /></div>
-      <div style="margin-bottom:14px"><label style="font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Password</label>
-        <input id="signupPassword" type="password" placeholder="Min. 6 characters" style="width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;outline:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box" /></div>
-      <button id="signupBtn" style="width:100%;background:#185FA5;color:white;border:none;padding:11px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Create account</button>
-      <div style="text-align:center;margin-top:1rem;font-size:13px;color:#666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Already have an account? <a id="toLogin" style="color:#185FA5;font-weight:600;cursor:pointer">Sign in</a></div>
+      <div class="auth-title">Create your account</div>
+      <div class="auth-sub">Join DxArena and sharpen your clinical reasoning.</div>
+      <label class="auth-label">Email</label>
+      <input class="auth-input" id="signupEmail" type="email" placeholder="you@example.com">
+      <label class="auth-label">Password</label>
+      <input class="auth-input" id="signupPassword" type="password" placeholder="Min. 6 characters">
+      <button class="auth-btn" id="signupBtn">Create account</button>
+      <div class="auth-switch">Already have one? <a id="toLogin">Sign in</a></div>
     </div>
   </div>
 </div>
 
-<!-- Main App (hidden until logged in) -->
-<div id="mainApp" style="display:none;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-  <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F0EEE8;color:#1a1a1a;height:100vh;overflow:hidden}
-  .app{display:grid;grid-template-columns:260px 1fr;grid-template-rows:52px 1fr 110px;height:100vh;gap:1px;background:#D3D1C7}
-  .topbar{grid-column:1/-1;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;border-bottom:1px solid #e5e3da}
-  .logo{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
-  .logo-icon{width:32px;height:28px;background:#185FA5;border-radius:7px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:800;letter-spacing:-.5px}
-  .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
-  .badge-blue{background:#E6F1FB;color:#185FA5}.badge-amber{background:#FAEEDA;color:#854F0B}
-  .badge-green{background:#EAF3DE;color:#3B6D11}.badge-red{background:#FCEBEB;color:#A32D2D}
-  .user-pill{display:flex;align-items:center;gap:8px;background:#F5F3EE;border:1px solid #e5e3da;border-radius:20px;padding:4px 12px 4px 6px;cursor:pointer}
-  .user-pill:hover{background:#e5e3da}
-  .user-avatar{width:24px;height:24px;border-radius:50%;background:#185FA5;color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
-  .user-name{font-size:12px;font-weight:600}.user-pts{font-size:11px;color:#185FA5;font-weight:700}
-  .left-panel{background:#fff;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid #e5e3da}
-  .notes-header{padding:10px .875rem 8px;border-bottom:1px solid #e5e3da;flex-shrink:0}
-  .notes-title{font-size:13px;font-weight:700}.notes-pt{font-size:11px;color:#666;margin-top:1px}
-  .notes-resources{padding:8px .875rem;border-bottom:1px solid #f0eeea;flex-shrink:0}
-  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .stat-box{background:#F5F3EE;border-radius:8px;padding:9px;text-align:center}
-  .stat-val{font-size:22px;font-weight:700}.stat-lbl{font-size:10px;color:#888;margin-top:1px}
-  .pbar-track{height:4px;background:#e5e3da;border-radius:2px;margin-top:6px}
-  .pbar-fill{height:4px;border-radius:2px;transition:width .4s,background .4s;background:#185FA5}
-  .notes-body{flex:1;overflow-y:auto;padding:.75rem .875rem;display:flex;flex-direction:column;gap:12px}
-  .notes-section{display:flex;flex-direction:column;gap:4px}
-  .notes-slbl{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.07em;padding-bottom:4px;border-bottom:1px solid #f0eeea;margin-bottom:2px}
-  .notes-empty{font-size:11.5px;color:#ccc;font-style:italic}
-  .note-entry{display:flex;gap:6px;align-items:baseline;animation:fadein .3s ease}
-  .note-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px}
-  .note-dot.crit{background:#E24B4A}.note-dot.res{background:#185FA5}.note-dot.norm{background:#B4B2A9}
-  .note-text{font-size:11.5px;color:#1a1a1a;line-height:1.55}
-  .note-text strong{font-weight:700;color:#444}
-  .center{background:#fff;display:flex;flex-direction:column;overflow:hidden}
-  .timeline{flex:1;padding:.875rem 1rem;display:flex;flex-direction:column;gap:9px;overflow-y:auto}
-  .msg{display:flex;gap:9px;align-items:flex-start;animation:fadein .25s ease}
-  @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-  .avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:2px}
-  .av-u{background:#EEEDFE;color:#534AB7}.av-s{background:#E1F5EE;color:#0F6E56}.av-c{background:#FCEBEB;color:#A32D2D}
-  .mb{flex:1}.mlbl{font-size:10px;color:#888;margin-bottom:2px;font-weight:600}
-  .mt{font-size:13px;line-height:1.65;background:#F5F3EE;padding:9px 12px;border-radius:8px;color:#1a1a1a}
-  .mt.crit{background:#FCEBEB;color:#791F1F;border-left:3px solid #E24B4A}
-  .mt.norm{background:#EAF3DE;color:#27500A;border-left:3px solid #639922}
-  .mt.res{background:#E6F1FB;color:#0C447C;border-left:3px solid #185FA5}
-  .mt.act{background:#EEEDFE;color:#3C3489;border-left:3px solid #534AB7}
-  .mt.warn{background:#FAEEDA;color:#633806;border-left:3px solid #BA7517}
-  .bottom-bar{grid-column:2;background:#fff;border-top:1px solid #e5e3da;display:flex;flex-direction:column;justify-content:center;padding:10px 1rem;gap:8px}
-  .bottom-row{display:flex;gap:8px;align-items:center}
-  .search-input{flex:1;font-size:13px;padding:9px 13px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;color:#1a1a1a;outline:none;font-family:inherit}
-  .search-input:focus{border-color:#185FA5;background:#fff;box-shadow:0 0 0 3px rgba(24,95,165,.1)}
-  .diag-input{font-size:12px;padding:8px 11px;border-radius:8px;border:1px solid #d3d1c7;background:#F5F3EE;color:#1a1a1a;outline:none;font-family:inherit;width:200px}
-  .diag-input:focus{border-color:#3B6D11;background:#fff;box-shadow:0 0 0 3px rgba(59,109,17,.1)}
-  .btn-diag{background:#3B6D11;color:white;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
-  .btn-diag:hover{background:#27500A}.btn-diag:disabled{background:#d3d1c7;color:#888;cursor:default}
-  .adots{display:flex;gap:3px;align-items:center}
-  .adot{width:7px;height:7px;border-radius:50%;background:#e5e3da}
-  .adot.used{background:#E24B4A}.adot.on{background:#3B6D11}
-  .suggestions{background:#fff;border:1px solid #d3d1c7;border-radius:8px;max-height:220px;overflow-y:auto;display:none;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
-  .suggestions.open{display:block}
-  .sug-item{padding:9px 13px;font-size:13px;cursor:pointer;border-bottom:0.5px solid #f0eeea;display:flex;align-items:center;justify-content:space-between}
-  .sug-item:last-child{border-bottom:none}
-  .sug-item:hover,.sug-item.sel{background:#E6F1FB;color:#185FA5}
-  .sug-item em{font-style:normal;font-weight:700;color:#185FA5}
-  .sug-cat{font-size:10px;color:#888;margin-left:8px;flex-shrink:0;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-  .sug-item:hover .sug-cat,.sug-item.sel .sug-cat{color:#185FA5}
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100}
-  .modal{background:#fff;border-radius:14px;padding:1.5rem;max-width:480px;width:92%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.25)}
-  .modal h2{font-size:19px;font-weight:700;margin-bottom:4px}
-  .msub{font-size:13px;color:#666;margin-bottom:1rem}
-  .profile-header{display:flex;align-items:center;gap:14px;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid #f0eeea}
-  .profile-avatar{width:52px;height:52px;border-radius:50%;background:#185FA5;color:white;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
-  .profile-name{font-size:17px;font-weight:700}.profile-email{font-size:12px;color:#888;margin-top:2px}.profile-joined{font-size:11px;color:#aaa;margin-top:2px}
-  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem}
-  .stat-card{background:#F5F3EE;border-radius:10px;padding:12px;text-align:center}
-  .stat-card-val{font-size:24px;font-weight:700;color:#185FA5}.stat-card-lbl{font-size:11px;color:#888;margin-top:2px}
-  .history-section{margin-bottom:1rem}.history-title{font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-  .history-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:8px;background:#F5F3EE;margin-bottom:5px}
-  .history-case{font-size:13px;font-weight:600}.history-meta{font-size:11px;color:#888;margin-top:2px}
-  .history-score{font-size:14px;font-weight:700}.history-score.pass{color:#3B6D11}.history-score.fail{color:#A32D2D}
-  .cat-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:1.25rem}
-  .cat-card{background:#F5F3EE;border-radius:8px;padding:10px 12px}
-  .cat-name{font-size:12px;font-weight:700}.cat-count{font-size:11px;color:#888;margin-top:2px}
-  .cat-bar-track{height:3px;background:#e5e3da;border-radius:2px;margin-top:6px}
-  .cat-bar-fill{height:3px;border-radius:2px;background:#185FA5}
-  .btn-signout{width:100%;background:#F5F3EE;color:#A32D2D;border:1px solid #f0c0c0;padding:9px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-  .btn-signout:hover{background:#FCEBEB}
-  .score-box{text-align:center;padding:1rem;background:#F5F3EE;border-radius:10px;margin-bottom:1rem}
-  .score-num{font-size:48px;font-weight:700;line-height:1}.score-grade{font-size:18px;font-weight:700;margin-top:4px}.score-lbl{font-size:13px;color:#666;margin-top:2px}
-  .points-earned{background:#EAF3DE;border-radius:10px;padding:10px;text-align:center;margin-bottom:1rem}
-  .points-earned-num{font-size:28px;font-weight:700;color:#3B6D11}.points-earned-lbl{font-size:12px;color:#3B6D11;margin-top:2px}
-  .rst{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-  .rdiag{font-size:15px;font-weight:700;color:#185FA5;background:#E6F1FB;padding:10px 13px;border-radius:8px;margin-bottom:6px}
-  .rexp{font-size:12.5px;color:#444;line-height:1.75}
-  .rlist{list-style:none;display:flex;flex-direction:column;gap:3px}
-  .rlist li{font-size:12.5px;padding:5px 10px;border-radius:7px}
-  .rlist li.g{background:#EAF3DE;color:#27500A}.rlist li.m{background:#FAEEDA;color:#633806}.rlist li.bad{background:#FCEBEB;color:#791F1F}
-  .rsec{margin-bottom:1rem}
-  .btn-end{width:100%;padding:10px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;margin-top:6px}
-  .btn-end.pr{background:#185FA5;color:white}.btn-end.pr:hover{background:#0C447C}
-  .btn-end.sc{background:#F5F3EE;color:#1a1a1a;border:1px solid #d3d1c7}.btn-end.sc:hover{background:#e5e3da}
-  .case-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:1rem}
-  .ccard{background:#F5F3EE;border:1.5px solid #e5e3da;border-radius:10px;padding:13px;cursor:pointer;transition:all .15s}
-  .ccard:hover{border-color:#185FA5;background:#E6F1FB}
-  .ccard-t{font-size:13px;font-weight:700}.ccard-s{font-size:11px;color:#666;margin-top:2px;line-height:1.4}
-  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#d3d1c7;border-radius:2px}
-  </style>
-
-  <div class="app">
-    <div class="topbar">
-      <div class="logo"><div class="logo-icon">Dx</div>DxArena</div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span id="catB" class="badge badge-blue">—</span>
-        <span id="difB" class="badge badge-amber">—</span>
-        <span id="cNum" style="font-size:12px;color:#888">—</span>
-        <button onclick="showSel()" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid #d3d1c7;background:#F5F3EE;color:#666;cursor:pointer;font-family:inherit">Change case</button>
-        <div class="user-pill" onclick="showProfile()">
-          <div class="user-avatar" id="userAvatar">?</div>
-          <span class="user-name" id="userName">—</span>
-          <span class="user-pts" id="userPts">0 pts</span>
-        </div>
+<!-- ── APP ──────────────────────────────────────────────────────────────── -->
+<div class="app" id="mainApp">
+  <div class="topbar">
+    <div class="logo"><div class="logo-icon">Dx</div>DxArena</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="catB" class="badge badge-blue">—</span>
+      <span id="difB" class="badge badge-amber">—</span>
+      <span id="cNum" style="font-size:12px;color:#888">—</span>
+      <button id="btnChangCase" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid #d3d1c7;background:#F5F3EE;color:#666;cursor:pointer;font-family:inherit">Change case</button>
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <span class="user-name" id="userName">—</span>
+        <span class="user-pts" id="userPts">0 pts</span>
       </div>
     </div>
-    <div class="left-panel">
-      <div class="notes-header">
-        <div class="notes-title" id="ptN">—</div>
-        <div class="notes-pt" id="ptI">—</div>
-        <div class="notes-pt" id="ptCC" style="margin-top:3px;color:#0C447C;font-weight:600">—</div>
-      </div>
-      <div class="notes-resources">
-        <div class="stat-grid">
-          <div class="stat-box"><div class="stat-val" id="stL">—</div><div class="stat-lbl">Steps left</div></div>
-          <div class="stat-box"><div class="stat-val" id="dgL" style="color:#3B6D11">3</div><div class="stat-lbl">Diagnoses left</div></div>
-        </div>
-        <div class="pbar-track"><div class="pbar-fill" id="pb" style="width:100%"></div></div>
-      </div>
-      <div class="notes-body">
-        <div class="notes-section"><div class="notes-slbl" id="lbl0">Vitals</div><div id="nVitals"></div></div>
-        <div class="notes-section"><div class="notes-slbl" id="lbl1">History</div><div id="nHist"><span class="notes-empty">None taken yet</span></div></div>
-        <div class="notes-section"><div class="notes-slbl" id="lbl2">Exam</div><div id="nExam"><span class="notes-empty">None performed yet</span></div></div>
-        <div class="notes-section"><div class="notes-slbl" id="lbl3">Labs</div><div id="nLabs"><span class="notes-empty">None ordered yet</span></div></div>
-        <div class="notes-section"><div class="notes-slbl" id="lbl4">Imaging</div><div id="nImg"><span class="notes-empty">None ordered yet</span></div></div>
-      </div>
+  </div>
+  <div class="left-panel">
+    <div class="notes-header">
+      <div class="notes-title" id="ptN">—</div>
+      <div class="notes-pt" id="ptI">—</div>
+      <div class="notes-pt" id="ptCC" style="margin-top:3px;color:#0C447C;font-weight:600">—</div>
     </div>
-    <div class="center"><div class="timeline" id="tl"></div></div>
-    <div class="bottom-bar">
-      <div id="sugList" class="suggestions"></div>
-      <div class="bottom-row">
-        <input id="searchInput" class="search-input" type="text" autocomplete="off" placeholder='Order a test, ask a question, or type anything — e.g. "CT head", "does the pain radiate?"' />
-        <div style="width:1px;height:28px;background:#e5e3da;flex-shrink:0"></div>
-        <input id="diagInput" class="diag-input" type="text" placeholder="Enter diagnosis..." />
-        <div class="adots" id="adots"><div class="adot on"></div><div class="adot on"></div><div class="adot on"></div></div>
-        <button class="btn-diag" id="diagBtn" onclick="doDiag()">Diagnose</button>
+    <div class="notes-resources">
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-val" id="stL">—</div><div class="stat-lbl">Steps left</div></div>
+        <div class="stat-box"><div class="stat-val" id="dgL" style="color:#3B6D11">3</div><div class="stat-lbl">Diagnoses left</div></div>
       </div>
-      <div id="aiStatus" style="font-size:11px;color:#888;padding:0 4px"></div>
+      <div class="pbar-track"><div class="pbar-fill" id="pb" style="width:100%"></div></div>
     </div>
+    <div class="notes-body">
+      <div class="notes-section"><div class="notes-slbl" id="lbl0">Vitals</div><div id="nVitals"></div></div>
+      <div class="notes-section"><div class="notes-slbl" id="lbl1">History</div><div id="nHist"><span class="notes-empty">None taken yet</span></div></div>
+      <div class="notes-section"><div class="notes-slbl" id="lbl2">Exam</div><div id="nExam"><span class="notes-empty">None performed yet</span></div></div>
+      <div class="notes-section"><div class="notes-slbl" id="lbl3">Labs</div><div id="nLabs"><span class="notes-empty">None ordered yet</span></div></div>
+      <div class="notes-section"><div class="notes-slbl" id="lbl4">Imaging</div><div id="nImg"><span class="notes-empty">None ordered yet</span></div></div>
+    </div>
+  </div>
+  <div class="center"><div class="timeline" id="tl"></div></div>
+  <div class="bottom-bar">
+    <div id="sugList" class="suggestions"></div>
+    <div class="bottom-row">
+      <input id="searchInput" class="search-input" type="text" autocomplete="off"
+        placeholder='Order a test or ask anything — e.g. "CT head", "does it radiate?", "troponin"'>
+      <div style="width:1px;height:28px;background:#e5e3da;flex-shrink:0"></div>
+      <input id="diagInput" class="diag-input" type="text" placeholder="Enter diagnosis...">
+      <div class="adots" id="adots"><div class="adot on"></div><div class="adot on"></div><div class="adot on"></div></div>
+      <button class="btn-diag" id="diagBtn">Diagnose</button>
+    </div>
+    <div style="font-size:11px;color:#888;text-align:right;min-height:16px" id="aiStatus"></div>
   </div>
 </div>
 
 <div id="ov"></div>
 
 <script>
-// ── Supabase Config (pure REST — no library needed) ────────────────────────
-const SB_URL = 'https://vyngrqvucmhqhnbrfkgh.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bmdycXZ1Y21ocWhuYnJma2doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzkzNDAsImV4cCI6MjA5MTg1NTM0MH0.U64gHzArhKOObecV1Jt-Gxh94IPNWK8OGNYVTuzNi5w';
-let accessToken = localStorage.getItem('sb_token') || null;
-let refreshToken = localStorage.getItem('sb_refresh') || null;
+// ─── Supabase (pure REST, zero library dependencies) ────────────────────────
+const SB = 'https://vyngrqvucmhqhnbrfkgh.supabase.co';
+const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bmdycXZ1Y21ocWhuYnJma2doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzkzNDAsImV4cCI6MjA5MTg1NTM0MH0.U64gHzArhKOObecV1Jt-Gxh94IPNWK8OGNYVTuzNi5w';
+let TOKEN = localStorage.getItem('dx_tok') || '';
+let currentUser = null, userProfile = null;
 
-// REST helpers
-async function sbAuth(endpoint, body) {
-  const r = await fetch(SB_URL + '/auth/v1/' + endpoint, {
+async function apiAuth(path, body) {
+  const r = await fetch(SB + '/auth/v1/' + path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+    headers: { 'Content-Type': 'application/json', 'apikey': SK },
     body: JSON.stringify(body)
   });
   return r.json();
 }
-async function sbFrom(table) {
-  return {
-    async select(cols) { return this; },
-    async eq(col, val) { this._eq = [col, val]; return this; },
-    async single() {
-      const r = await fetch(SB_URL + '/rest/v1/' + table + '?' + this._eq[0] + '=eq.' + this._eq[1],
-        { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + accessToken } });
-      const d = await r.json();
-      return { data: Array.isArray(d) ? d[0] : d };
-    }
-  };
-}
-async function sbQuery(table, method, body, filters) {
-  const params = filters ? '?' + Object.entries(filters).map(([k,v])=>k+'=eq.'+v).join('&') : '';
-  const r = await fetch(SB_URL + '/rest/v1/' + table + params, {
+async function apiDb(table, method, body, filter) {
+  const q = filter ? '?' + Object.entries(filter).map(([k,v]) => k+'=eq.'+encodeURIComponent(v)).join('&') : '';
+  const r = await fetch(SB + '/rest/v1/' + table + q, {
     method: method || 'GET',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + accessToken,
-      'Prefer': method === 'POST' ? 'return=minimal' : 'return=representation'
+      'apikey': SK,
+      'Authorization': 'Bearer ' + TOKEN,
+      'Prefer': method === 'POST' ? 'return=minimal' : method === 'PATCH' ? 'return=minimal' : 'return=representation'
     },
     body: body ? JSON.stringify(body) : undefined
   });
-  if (r.status === 204 || r.headers.get('content-length') === '0') return { data: null };
-  const data = await r.json();
-  return { data };
+  if (r.status === 204) return [];
+  try { return await r.json(); } catch(e) { return []; }
 }
 
-function saveTokens(session) {
-  if (!session) { localStorage.removeItem('sb_token'); localStorage.removeItem('sb_refresh'); accessToken=null; refreshToken=null; return; }
-  accessToken = session.access_token;
-  refreshToken = session.refresh_token;
-  localStorage.setItem('sb_token', accessToken);
-  localStorage.setItem('sb_refresh', refreshToken);
-}
-
-
-let currentUser = null, userProfile = null;
-let cc = null, used = new Set(), dAttempts = 0;
-let allActions = [], selIdx = -1;
-let txPhase = false, txData = null, txUsed = new Set(), txStepsUsed = 0, txAllActions = [];
-
-function showAuthError(msg, success) {
-  const el = document.getElementById('authError');
+// ─── Auth UI helpers ─────────────────────────────────────────────────────────
+function showErr(msg, ok) {
+  const el = document.getElementById('authErr');
   el.textContent = msg;
   el.style.display = 'block';
-  el.style.background = success ? '#EAF3DE' : '#FCEBEB';
-  el.style.color = success ? '#27500A' : '#791F1F';
+  el.style.background = ok ? '#EAF3DE' : '#FCEBEB';
+  el.style.color = ok ? '#27500A' : '#791F1F';
 }
-function clearAuthError() { document.getElementById('authError').style.display = 'none'; }
-function switchAuth(view) {
-  clearAuthError();
-  document.getElementById('loginView').style.display = view === 'login' ? 'block' : 'none';
-  document.getElementById('signupView').style.display = view === 'signup' ? 'block' : 'none';
+function hideErr() { document.getElementById('authErr').style.display = 'none'; }
+function setBusy(busy) {
+  document.getElementById('loginBtn').disabled = busy;
+  document.getElementById('signupBtn').disabled = busy;
+}
+function showView(v) {
+  hideErr();
+  document.getElementById('loginView').style.display = v === 'login' ? 'block' : 'none';
+  document.getElementById('signupView').style.display = v === 'signup' ? 'block' : 'none';
+}
+function enterApp() {
+  document.getElementById('authWrap').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'grid';
+  if (!cc) load(0);
 }
 
+// ─── Auth actions ────────────────────────────────────────────────────────────
 async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
-  const pass = document.getElementById('loginPassword').value;
-  if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
-  clearAuthError();
-  document.getElementById('loginBtn').disabled = true;
+  const pass  = document.getElementById('loginPassword').value;
+  if (!email || !pass) { showErr('Please enter your email and password.'); return; }
+  hideErr(); setBusy(true);
   try {
-    const data = await sbAuth('token?grant_type=password', { email, password: pass });
-    if (data.error || data.error_description) {
-      showAuthError(data.error_description || data.error || 'Invalid email or password.');
-    } else {
-      saveTokens(data);
-      currentUser = data.user;
+    const d = await apiAuth('token?grant_type=password', { email, password: pass });
+    if (d.access_token) {
+      TOKEN = d.access_token;
+      localStorage.setItem('dx_tok', TOKEN);
+      currentUser = d.user;
       await loadProfile();
-      document.getElementById('authScreen').style.display = 'none';
-      document.getElementById('mainApp').style.display = 'block';
-      if (!cc) load(0);
+      enterApp();
+    } else {
+      showErr(d.error_description || d.msg || 'Incorrect email or password.');
     }
-  } catch(e) { showAuthError('Connection error. Please check your internet and try again.'); }
-  document.getElementById('loginBtn').disabled = false;
+  } catch(e) { showErr('Network error — check your connection.'); }
+  setBusy(false);
 }
 
 async function doSignup() {
   const email = document.getElementById('signupEmail').value.trim();
-  const pass = document.getElementById('signupPassword').value;
-  if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
-  if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
-  clearAuthError();
-  document.getElementById('signupBtn').disabled = true;
+  const pass  = document.getElementById('signupPassword').value;
+  if (!email || !pass) { showErr('Please fill in all fields.'); return; }
+  if (pass.length < 6) { showErr('Password must be at least 6 characters.'); return; }
+  hideErr(); setBusy(true);
   try {
-    const data = await sbAuth('signup', { email, password: pass });
-    if (data.error || data.error_description) {
-      showAuthError(data.error_description || data.error || 'Signup failed.');
-    } else {
-      // Auto sign in after signup
-      const login = await sbAuth('token?grant_type=password', { email, password: pass });
-      if (login.access_token) {
-        saveTokens(login);
-        currentUser = login.user;
+    const d = await apiAuth('signup', { email, password: pass });
+    if (d.id || d.access_token) {
+      if (d.access_token) {
+        TOKEN = d.access_token;
+        localStorage.setItem('dx_tok', TOKEN);
+        currentUser = d.user;
         await loadProfile();
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        if (!cc) load(0);
+        enterApp();
       } else {
-        showAuthError('Account created! Please sign in.', true);
-        switchAuth('login');
+        showErr('Account created! Please sign in.', true);
+        showView('login');
       }
+    } else {
+      showErr(d.error_description || d.msg || 'Signup failed — try a different email.');
     }
-  } catch(e) { showAuthError('Connection error. Please try again.'); }
-  document.getElementById('signupBtn').disabled = false;
+  } catch(e) { showErr('Network error — check your connection.'); }
+  setBusy(false);
 }
 
 async function doSignOut() {
-  try { await sbAuth('logout', {}); } catch(e) {}
-  saveTokens(null);
+  try { await apiAuth('logout', {}); } catch(e) {}
+  TOKEN = ''; localStorage.removeItem('dx_tok');
+  currentUser = null; userProfile = null;
   document.getElementById('ov').innerHTML = '';
   document.getElementById('mainApp').style.display = 'none';
-  document.getElementById('authScreen').style.display = 'flex';
-  currentUser = null; userProfile = null;
+  document.getElementById('authWrap').style.display = 'flex';
 }
 
 async function loadProfile() {
-  if (!currentUser || !accessToken) return;
+  if (!TOKEN || !currentUser) return;
   try {
-    const r = await fetch(SB_URL + '/rest/v1/profiles?id=eq.' + currentUser.id, {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + accessToken }
-    });
-    const rows = await r.json();
-    userProfile = rows[0] || null;
+    const rows = await apiDb('profiles', 'GET', null, { id: currentUser.id });
+    userProfile = Array.isArray(rows) ? rows[0] : rows;
     if (userProfile) {
       document.getElementById('userAvatar').textContent = (userProfile.email||'?')[0].toUpperCase();
-      document.getElementById('userName').textContent = userProfile.email.split('@')[0];
-      document.getElementById('userPts').textContent = (userProfile.total_points||0) + ' pts';
+      document.getElementById('userName').textContent   = userProfile.email.split('@')[0];
+      document.getElementById('userPts').textContent    = (userProfile.total_points||0) + ' pts';
     }
-  } catch(e) { console.log('Profile load error:', e); }
+  } catch(e) {}
 }
 
 async function saveAttempt(correct, score) {
-  if (!currentUser || !accessToken) return 0;
+  if (!TOKEN || !currentUser) return 0;
   const pts = correct ? Math.max(10, score) : 5;
   try {
-    await fetch(SB_URL + '/rest/v1/case_attempts', {
-      method: 'POST',
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ user_id: currentUser.id, case_id: cc.id, case_title: cc.title, case_category: cc.cat, score, correct, steps_used: cc.stepsUsed, max_steps: cc.maxSteps, diag_attempts: dAttempts })
+    await apiDb('case_attempts', 'POST', {
+      user_id: currentUser.id, case_id: cc.id, case_title: cc.title,
+      case_category: cc.cat, score, correct,
+      steps_used: cc.stepsUsed, max_steps: cc.maxSteps, diag_attempts: dAttempts
     });
-    await fetch(SB_URL + '/rest/v1/profiles?id=eq.' + currentUser.id, {
-      method: 'PATCH',
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ total_points: (userProfile?.total_points||0) + pts, cases_completed: (userProfile?.cases_completed||0) + 1 })
-    });
+    await apiDb('profiles', 'PATCH', {
+      total_points: (userProfile?.total_points||0) + pts,
+      cases_completed: (userProfile?.cases_completed||0) + 1
+    }, { id: currentUser.id });
     await loadProfile();
-  } catch(e) { console.log('Save error:', e); }
+  } catch(e) {}
   return pts;
 }
 
 async function showProfile() {
-  if (!currentUser || !accessToken) return;
+  if (!currentUser) return;
   await loadProfile();
   let attempts = [];
-  try {
-    const r = await fetch(SB_URL + '/rest/v1/case_attempts?user_id=eq.' + currentUser.id + '&order=completed_at.desc&limit=20', {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + accessToken }
-    });
-    attempts = await r.json();
-  } catch(e) {}
-  const total = attempts.length;
-  const passed = attempts.filter(a=>a.correct).length;
+  try { attempts = await apiDb('case_attempts', 'GET', null, { user_id: currentUser.id }) || []; } catch(e) {}
+  attempts = Array.isArray(attempts) ? attempts.sort((a,b) => new Date(b.completed_at)-new Date(a.completed_at)).slice(0,20) : [];
+  const total = attempts.length, passed = attempts.filter(a=>a.correct).length;
   const cats = {};
-  attempts.forEach(a => {
-    if (!cats[a.case_category]) cats[a.case_category] = {total:0,passed:0};
-    cats[a.case_category].total++;
-    if (a.correct) cats[a.case_category].passed++;
-  });
+  attempts.forEach(a => { if(!cats[a.case_category]) cats[a.case_category]={total:0,passed:0}; cats[a.case_category].total++; if(a.correct) cats[a.case_category].passed++; });
   const maxCat = Math.max(...Object.values(cats).map(c=>c.total), 1);
-  const el = document.createElement('div'); el.className='overlay';
-  el.innerHTML=`<div class="modal">
+  const el = document.createElement('div'); el.className = 'overlay';
+  el.innerHTML = `<div class="modal">
     <div class="profile-header">
       <div class="profile-avatar">${(userProfile?.email||'?')[0].toUpperCase()}</div>
       <div><div class="profile-name">${userProfile?.email?.split('@')[0]||'User'}</div>
       <div class="profile-email">${userProfile?.email||''}</div>
-      <div class="profile-joined">Member since ${new Date(userProfile?.created_at||Date.now()).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</div></div>
+      <div class="profile-joined">Since ${new Date(userProfile?.created_at||Date.now()).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</div></div>
     </div>
     <div class="stats-row">
       <div class="stat-card"><div class="stat-card-val">${userProfile?.total_points||0}</div><div class="stat-card-lbl">Total points</div></div>
@@ -414,63 +391,29 @@ async function showProfile() {
         <div class="history-score ${a.correct?'pass':'fail'}">${a.score}</div>
       </div>`).join('')||'<div style="color:#aaa;font-size:13px">No cases played yet.</div>'}
     </div>
-    <button class="btn-signout" onclick="doSignOut()">Sign out</button>
-    <button class="btn-end sc" onclick="document.getElementById('ov').innerHTML=''" style="margin-top:6px">Close</button>
+    <button class="btn-signout" id="soBtn">Sign out</button>
+    <button class="btn-end sc" id="closeProfileBtn" style="margin-top:6px">Close</button>
   </div>`;
-  document.getElementById('ov').innerHTML='';
+  document.getElementById('ov').innerHTML = '';
   document.getElementById('ov').appendChild(el);
+  document.getElementById('soBtn').onclick = doSignOut;
+  document.getElementById('closeProfileBtn').onclick = () => { document.getElementById('ov').innerHTML=''; };
 }
 
-// Setup — runs at end of script when DOM is ready
-function initSetup() {
-  // Wire auth buttons
-  document.getElementById('loginBtn').addEventListener('click', doLogin);
-  document.getElementById('signupBtn').addEventListener('click', doSignup);
-  document.getElementById('toSignup').addEventListener('click', () => switchAuth('signup'));
-  document.getElementById('toLogin').addEventListener('click', () => switchAuth('login'));
-  document.getElementById('loginPassword').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-  document.getElementById('loginEmail').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-  document.getElementById('signupPassword').addEventListener('keydown', e => { if(e.key==='Enter') doSignup(); });
-  document.getElementById('diagInput').addEventListener('keydown', e => { if(e.key==='Enter') doDiag(); });
-  document.getElementById('searchInput').addEventListener('focus', function() { renderSug(this.value); });
-  document.getElementById('searchInput').addEventListener('input', function() { renderSug(this.value); });
-  document.getElementById('searchInput').addEventListener('keydown', function(e) {
-    if (e.key==='ArrowDown'){e.preventDefault();moveSel(1);}
-    else if(e.key==='ArrowUp'){e.preventDefault();moveSel(-1);}
-    else if(e.key==='Enter'){
-      e.preventDefault();
-      const items=document.getElementById('sugList').querySelectorAll('.sug-item');
-      const target=selIdx>=0?items[selIdx]:items[0];
-      if(target){ tap(target.dataset.key,target.dataset.group); this.value=''; }
-      else if(this.value.trim()){ const q=this.value.trim(); this.value=''; closeSug(); sendToAI(q); }
-    } else if(e.key==='Escape'){closeSug();}
-  });
-  document.addEventListener('click', e => { if(!e.target.closest('.bottom-bar')) closeSug(); });
-
-  // Check if user has a stored token (auto-login)
-  if (accessToken) {
-    // Verify token is still valid by fetching profile
-    fetch(SB_URL + '/rest/v1/profiles?limit=1', {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + accessToken }
-    }).then(async r => {
-      if (r.ok) {
-        // Token valid — get user info
-        const userR = await fetch(SB_URL + '/auth/v1/user', {
-          headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + accessToken }
-        });
-        if (userR.ok) {
-          currentUser = await userR.json();
-          await loadProfile();
-          document.getElementById('authScreen').style.display = 'none';
-          document.getElementById('mainApp').style.display = 'block';
-          if (!cc) load(0);
-        } else { saveTokens(null); } // Token expired
-      } else { saveTokens(null); } // Token invalid
-    }).catch(() => saveTokens(null));
-  }
+// ─── Auto-login on page load ─────────────────────────────────────────────────
+if (TOKEN) {
+  fetch(SB + '/auth/v1/user', { headers: { 'apikey': SK, 'Authorization': 'Bearer ' + TOKEN } })
+    .then(r => r.ok ? r.json() : null)
+    .then(async u => {
+      if (u && u.id) {
+        currentUser = u;
+        await loadProfile();
+        enterApp();
+      } else {
+        TOKEN = ''; localStorage.removeItem('dx_tok');
+      }
+    }).catch(() => { TOKEN = ''; localStorage.removeItem('dx_tok'); });
 }
-
-
 const CASES = [
  {
   id:1,title:"Case #1",cat:"Neurology",dif:"Beginner",maxSteps:12,
@@ -820,6 +763,15 @@ function getMergedActions(caseObj) {
   return merged;
 }
 
+function getMergedActions(caseObj) {
+  const merged = {hist:{},exam:{},labs:{},img:{}};
+  ['hist','exam','labs','img'].forEach(grp => {
+    Object.entries(UNIVERSAL[grp]||{}).forEach(([k,v]) => { merged[grp][k] = v; });
+    Object.entries(caseObj[grp]||{}).forEach(([k,v]) => { merged[grp][k] = v; });
+  });
+  return merged;
+}
+
 const TREATMENTS = {
 
  1: { // SAH
@@ -961,193 +913,203 @@ const TREATMENTS = {
   }
  }
 };
-// ── Messaging ──────────────────────────────────────────────────────────────
+
+// ─── Game state ──────────────────────────────────────────────────────────────
+let cc = null, used = new Set(), dAttempts = 0;
+let allActions = [], selIdx = -1;
+let txPhase = false, txData = null, txUsed = new Set(), txStepsUsed = 0, txAllActions = [];
+let aiHistory = [];
+
+// ─── Messaging ───────────────────────────────────────────────────────────────
 function addMsg(type, label, text, style) {
   const tl = document.getElementById('tl');
-  const d = document.createElement('div'); d.className='msg';
+  const d = document.createElement('div'); d.className = 'msg';
   const ac = type==='user'?'av-u':(style==='crit'?'av-c':'av-s');
   const at = type==='user'?'MD':(style==='crit'?'!':'RX');
-  d.innerHTML=`<div class="avatar ${ac}">${at}</div><div class="mb"><div class="mlbl">${label}</div><div class="mt ${style||''}">${text}</div></div>`;
-  tl.appendChild(d); tl.scrollTop=tl.scrollHeight;
+  d.innerHTML = `<div class="avatar ${ac}">${at}</div><div class="mb"><div class="mlbl">${label}</div><div class="mt ${style||''}">${text}</div></div>`;
+  tl.appendChild(d); tl.scrollTop = tl.scrollHeight;
 }
 
-// ── Step counter ───────────────────────────────────────────────────────────
+// ─── Steps ───────────────────────────────────────────────────────────────────
 function consumeStep() {
   cc.stepsUsed++;
   const left = cc.maxSteps - cc.stepsUsed;
   document.getElementById('stL').textContent = left;
-  const pct = left/cc.maxSteps*100;
+  const pct = left / cc.maxSteps * 100;
   const pb = document.getElementById('pb');
-  pb.style.width=pct+'%';
-  pb.style.background=pct>50?'#185FA5':pct>25?'#BA7517':'#E24B4A';
-  if (left<=0) { document.getElementById('searchInput').disabled=true; addMsg('system','System','No steps remaining. Submit your final diagnosis.','warn'); }
+  pb.style.width = pct + '%';
+  pb.style.background = pct>50?'#185FA5':pct>25?'#BA7517':'#E24B4A';
+  if (left <= 0) { document.getElementById('searchInput').disabled = true; addMsg('system','System','No steps remaining. Submit your final diagnosis.','warn'); }
 }
 
-// ── Notes ──────────────────────────────────────────────────────────────────
+// ─── Notes ───────────────────────────────────────────────────────────────────
 const NOTE_IDS = {hist:'nHist',exam:'nExam',labs:'nLabs',img:'nImg'};
 function addNoteEntry(group, entry) {
   const el = document.getElementById(NOTE_IDS[group]); if (!el) return;
   const empty = el.querySelector('.notes-empty'); if (empty) empty.remove();
-  let summary = entry.a.split('. ').slice(0,2).join('. ').trim();
-  if (summary.length>130) summary=summary.slice(0,127)+'…';
-  const row = document.createElement('div'); row.className='note-entry';
-  row.innerHTML=`<div class="note-dot ${entry.tag||'res'}"></div><div class="note-text"><strong>${entry.lbl}:</strong> ${summary}</div>`;
+  let s = entry.a.split('. ').slice(0,2).join('. ').trim();
+  if (s.length > 130) s = s.slice(0,127) + '…';
+  const row = document.createElement('div'); row.className = 'note-entry';
+  row.innerHTML = `<div class="note-dot ${entry.tag||'res'}"></div><div class="note-text"><strong>${entry.lbl}:</strong> ${s}</div>`;
   el.appendChild(row);
-  document.querySelector('.notes-body').scrollTop=9999;
+  document.querySelector('.notes-body').scrollTop = 9999;
 }
 function initNotes() {
-  document.getElementById('nVitals').innerHTML=Object.entries(cc.vitals).map(([k,v])=>
+  document.getElementById('nVitals').innerHTML = Object.entries(cc.vitals).map(([k,v]) =>
     `<div class="note-entry"><div class="note-dot norm"></div><div class="note-text"><strong>${k}:</strong> ${v}</div></div>`).join('');
-  const ph={nHist:'None taken yet',nExam:'None performed yet',nLabs:'None ordered yet',nImg:'None ordered yet'};
-  Object.entries(ph).forEach(([id,txt])=>{ document.getElementById(id).innerHTML=`<span class="notes-empty">${txt}</span>`; });
-  ['lbl1','lbl2','lbl3','lbl4'].forEach((id,i)=>{
-    document.getElementById(id).textContent=['History','Exam','Labs','Imaging'][i];
-  });
+  const ph = {nHist:'None taken yet',nExam:'None performed yet',nLabs:'None ordered yet',nImg:'None ordered yet'};
+  Object.entries(ph).forEach(([id,txt]) => { document.getElementById(id).innerHTML = `<span class="notes-empty">${txt}</span>`; });
+  ['lbl1','lbl2','lbl3','lbl4'].forEach((id,i) => { document.getElementById(id).textContent = ['History','Exam','Labs','Imaging'][i]; });
 }
 
-// ── Action execution ───────────────────────────────────────────────────────
+// ─── Action execution ─────────────────────────────────────────────────────────
 function tap(key, group) {
-  if (txPhase && group==='tx') { tapTx(key); return; }
-  if (used.has(key)||cc.stepsUsed>=cc.maxSteps) return;
+  if (txPhase && group === 'tx') { tapTx(key); return; }
+  if (used.has(key) || cc.stepsUsed >= cc.maxSteps) return;
   const merged = getMergedActions(cc);
   const entry = merged[group]?.[key]; if (!entry) return;
   used.add(key);
   closeSug();
   addMsg('user','You',entry.q,'act');
-  setTimeout(()=>{ addMsg('system','Chart',entry.a,entry.tag||'res'); addNoteEntry(group,entry); consumeStep(); buildActionIndex(); },350);
+  setTimeout(() => { addMsg('system','Chart',entry.a,entry.tag||'res'); addNoteEntry(group,entry); consumeStep(); buildActionIndex(); }, 350);
 }
 
-// ── Search ─────────────────────────────────────────────────────────────────
+// ─── Search ───────────────────────────────────────────────────────────────────
 function buildActionIndex() {
   const merged = getMergedActions(cc);
-  const caseKeys = new Set([
-    ...Object.keys(cc.hist||{}),
-    ...Object.keys(cc.exam||{}),
-    ...Object.keys(cc.labs||{}),
-    ...Object.keys(cc.img||{})
-  ]);
-  allActions=[];
-  [['hist','History'],['exam','Exam'],['labs','Labs'],['img','Imaging']].forEach(([grp,cat])=>{
-    Object.entries(merged[grp]).forEach(([k,v])=>{
-      if (!used.has(k)) allActions.push({
-        key:k, group:grp, label:v.lbl||k, cat,
-        isCase: caseKeys.has(k),
-        search:[(v.lbl||k),(v.q||''),(v.aliases||''),cat].join(' ').toLowerCase()
-      });
+  const caseKeys = new Set([...Object.keys(cc.hist||{}),...Object.keys(cc.exam||{}),...Object.keys(cc.labs||{}),...Object.keys(cc.img||{})]);
+  allActions = [];
+  [['hist','History'],['exam','Exam'],['labs','Labs'],['img','Imaging']].forEach(([grp,cat]) => {
+    Object.entries(merged[grp]).forEach(([k,v]) => {
+      if (!used.has(k)) allActions.push({ key:k, group:grp, label:v.lbl||k, cat, isCase:caseKeys.has(k),
+        search: [(v.lbl||k),(v.q||''),(v.aliases||''),cat].join(' ').toLowerCase() });
     });
   });
 }
 function scoreMatch(a, q) {
   if (!q) return 1;
-  const s = a.search;
-  const lbl = a.label.toLowerCase();
-  const caseBoost = a.isCase ? 10 : 0;
-  // Exact label match - highest priority
-  if (lbl === q) return 100 + caseBoost;
-  // Label contains query
-  if (lbl.includes(q)) return 90 + caseBoost;
-  // Query contains label (e.g. typing "ecg 12 lead" matches "ecg")
-  if (q.includes(lbl)) return 85 + caseBoost;
-  // Alias/question match
-  if (s.includes(q)) return 70 + caseBoost;
-  // All words match in search string
+  const lbl = a.label.toLowerCase(), s = a.search, cb = a.isCase?10:0;
+  if (lbl === q) return 100+cb;
+  if (lbl.includes(q)) return 90+cb;
+  if (q.includes(lbl)) return 85+cb;
+  if (s.includes(q)) return 70+cb;
   const words = q.split(/\s+/).filter(w=>w.length>=2);
-  if (words.length>1 && words.every(w=>s.includes(w))) return 55 + caseBoost;
-  // Any meaningful word matches label or aliases (NOT answer text to avoid false positives)
-  const labelAndAliases = (lbl + ' ' + (a.search.split(' ').slice(0,10).join(' '))).toLowerCase();
-  if (words.filter(w=>w.length>=3).some(w=>labelAndAliases.includes(w))) return 30 + caseBoost;
+  if (words.length>1 && words.every(w=>s.includes(w))) return 55+cb;
+  const lblAl = (lbl+' '+(a.search.split(' ').slice(0,10).join(' '))).toLowerCase();
+  if (words.filter(w=>w.length>=3).some(w=>lblAl.includes(w))) return 30+cb;
   return 0;
 }
-function highlight(str,q) {
+function highlight(str, q) {
   if (!q) return str;
-  const i=str.toLowerCase().indexOf(q.toLowerCase());
-  if (i<0) return str;
+  const i = str.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return str;
   return str.slice(0,i)+'<em>'+str.slice(i,i+q.length)+'</em>'+str.slice(i+q.length);
 }
 function renderSug(query) {
-  const sug=document.getElementById('sugList');
-  const q=(query||'').trim().toLowerCase();
-  const src=txPhase?txAllActions:allActions;
-  const scored=src.map(a=>({...a,score:scoreMatch(a,q)})).filter(a=>a.score>0).sort((a,b)=>b.score-a.score).slice(0,8);
-  if (!scored.length){sug.className='suggestions';selIdx=-1;return;}
-  sug.innerHTML=scored.map(m=>`<div class="sug-item" data-key="${m.key}" data-group="${m.group}">
-    <span>${highlight(m.label,query||'')}</span><span class="sug-cat">${m.cat}</span></div>`).join('');
-  sug.querySelectorAll('.sug-item').forEach(el=>{
-    el.addEventListener('mousedown',e=>{ e.preventDefault(); tap(el.dataset.key,el.dataset.group); document.getElementById('searchInput').value=''; });
+  const sug = document.getElementById('sugList');
+  const q = (query||'').trim().toLowerCase();
+  const src = txPhase ? txAllActions : allActions;
+  const scored = src.map(a => ({...a, score:scoreMatch(a,q)})).filter(a=>a.score>0).sort((a,b)=>b.score-a.score).slice(0,8);
+  if (!scored.length) { sug.className='suggestions'; selIdx=-1; return; }
+  sug.innerHTML = scored.map(m =>
+    `<div class="sug-item" data-key="${m.key}" data-group="${m.group}">
+      <span>${highlight(m.label, query||'')}</span><span class="sug-cat">${m.cat}</span>
+    </div>`).join('');
+  sug.querySelectorAll('.sug-item').forEach(el => {
+    el.addEventListener('mousedown', e => { e.preventDefault(); tap(el.dataset.key, el.dataset.group); document.getElementById('searchInput').value=''; });
   });
-  selIdx=-1; sug.className='suggestions open';
+  selIdx = -1; sug.className = 'suggestions open';
 }
-function closeSug(){document.getElementById('sugList').className='suggestions';selIdx=-1;}
-function moveSel(dir){
-  const sug=document.getElementById('sugList');
-  const items=sug.querySelectorAll('.sug-item');
+function closeSug() { document.getElementById('sugList').className='suggestions'; selIdx=-1; }
+function moveSel(dir) {
+  const items = document.getElementById('sugList').querySelectorAll('.sug-item');
   if (!items.length) return;
   items[selIdx]?.classList.remove('sel');
-  selIdx=Math.max(-1,Math.min(items.length-1,selIdx+dir));
-  if (selIdx>=0) items[selIdx].classList.add('sel');
+  selIdx = Math.max(-1, Math.min(items.length-1, selIdx+dir));
+  if (selIdx >= 0) items[selIdx].classList.add('sel');
 }
 
-// ── Diagnosis ──────────────────────────────────────────────────────────────
+// ─── AI free-text ─────────────────────────────────────────────────────────────
+async function sendToAI(query) {
+  if (!query) return;
+  if (cc && cc.stepsUsed >= cc.maxSteps) { addMsg('system','System','No steps remaining.','warn'); return; }
+  document.getElementById('aiStatus').textContent = 'AI thinking…';
+  addMsg('user','You',query,'act');
+  aiHistory.push({ role:'user', content:query });
+  const sys = cc ? `Patient: ${cc.pt.name}, ${cc.pt.age}yo ${cc.pt.sex}, presenting with "${cc.cc}". Vitals: ${JSON.stringify(cc.vitals)}. True diagnosis: "${cc.dx}" — do NOT reveal this. You are the clinical chart. Respond in 1-3 sentences. Raw findings only — no diagnostic conclusions.` : 'You are a clinical chart simulator.';
+  try {
+    const r = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ systemPrompt:sys, messages:aiHistory }) });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    aiHistory.push({ role:'assistant', content:d.text });
+    addMsg('system','Chart (AI)',d.text,'res');
+    if (cc && !txPhase) consumeStep();
+  } catch(e) {
+    addMsg('system','System','AI unavailable — '+e.message,'warn');
+    aiHistory.pop();
+  }
+  document.getElementById('aiStatus').textContent = '';
+}
+
+// ─── Diagnosis ────────────────────────────────────────────────────────────────
 function doDiag() {
-  const inp=document.getElementById('diagInput');
-  const v=inp.value.trim(); if (!v||dAttempts>=cc.maxDiag) return;
-  inp.value=''; dAttempts++;
+  const inp = document.getElementById('diagInput');
+  const v = inp.value.trim(); if (!v || dAttempts >= cc.maxDiag) return;
+  inp.value = ''; dAttempts++;
   updateDots();
-  const guess=v.toLowerCase().trim();
-  const targets=[cc.dx.toLowerCase(),...(cc.dxAliases||[])];
-  const correct=targets.some(target=>{
-    if (guess===target) return true;
-    if (target.includes(guess)||guess.includes(target)) return true;
-    const gw=guess.split(/[\s,()\/\-]+/).filter(w=>w.length>=3);
-    const tw=target.split(/[\s,()\/\-]+/).filter(w=>w.length>=3);
-    return gw.some(w=>target.includes(w))||tw.some(w=>guess.includes(w));
+  const guess = v.toLowerCase().trim();
+  const targets = [cc.dx.toLowerCase(), ...(cc.dxAliases||[])];
+  const correct = targets.some(t => {
+    if (guess===t || t.includes(guess) || guess.includes(t)) return true;
+    const gw = guess.split(/[\s,()\/\-]+/).filter(w=>w.length>=3);
+    const tw = t.split(/[\s,()\/\-]+/).filter(w=>w.length>=3);
+    return gw.some(w=>t.includes(w)) || tw.some(w=>guess.includes(w));
   });
   if (correct) {
     addMsg('user','Your diagnosis',v,'norm');
     addMsg('system','Evaluation','Correct! Well reasoned.','norm');
-    cc.diagAttempts=dAttempts;
-    setTimeout(()=>showEnd(true),600);
-  } else if (dAttempts>=cc.maxDiag) {
+    cc.diagAttempts = dAttempts;
+    setTimeout(() => showEnd(true), 600);
+  } else if (dAttempts >= cc.maxDiag) {
     addMsg('user','Your diagnosis',v,'res');
     addMsg('system','Evaluation','Incorrect — no attempts remaining.','crit');
-    cc.diagAttempts=dAttempts;
-    setTimeout(()=>showEnd(false),600);
+    cc.diagAttempts = dAttempts;
+    setTimeout(() => showEnd(false), 600);
   } else {
     addMsg('user','Your diagnosis',v,'res');
-    const rem=cc.maxDiag-dAttempts;
+    const rem = cc.maxDiag - dAttempts;
     addMsg('system','Evaluation',`Not the primary diagnosis. ${rem} attempt${rem>1?'s':''} remaining.`,'res');
-    document.getElementById('dgL').textContent=rem;
+    document.getElementById('dgL').textContent = rem;
   }
 }
 function updateDots() {
-  document.querySelectorAll('.adot').forEach((d,i)=>{
-    d.className='adot';
-    if (i<dAttempts) d.classList.add('used');
-    else if (i<cc.maxDiag) d.classList.add('on');
+  document.querySelectorAll('.adot').forEach((d,i) => {
+    d.className = 'adot';
+    if (i < dAttempts) d.classList.add('used');
+    else if (i < cc.maxDiag) d.classList.add('on');
   });
-  if (dAttempts>=cc.maxDiag){document.getElementById('diagBtn').disabled=true;document.getElementById('diagInput').disabled=true;}
+  if (dAttempts >= cc.maxDiag) { document.getElementById('diagBtn').disabled=true; document.getElementById('diagInput').disabled=true; }
 }
 
-// ── Scoring ────────────────────────────────────────────────────────────────
+// ─── Scoring ──────────────────────────────────────────────────────────────────
 function calcScore(correct) {
-  if (!correct) return Math.max(10,35-dAttempts*10);
-  return Math.min(100,55+Math.max(0,cc.maxSteps-cc.stepsUsed)*3+(cc.maxDiag-dAttempts+1)*10);
+  if (!correct) return Math.max(10, 35 - dAttempts*10);
+  return Math.min(100, 55 + Math.max(0, cc.maxSteps-cc.stepsUsed)*3 + (cc.maxDiag-dAttempts+1)*10);
 }
-function grade(s){return s>=90?{g:'A+',c:'#185FA5'}:s>=80?{g:'A',c:'#185FA5'}:s>=70?{g:'B',c:'#3B6D11'}:s>=60?{g:'C',c:'#BA7517'}:{g:'D',c:'#A32D2D'};}
+function grade(s) { return s>=90?{g:'A+',c:'#185FA5'}:s>=80?{g:'A',c:'#185FA5'}:s>=70?{g:'B',c:'#3B6D11'}:s>=60?{g:'C',c:'#BA7517'}:{g:'D',c:'#A32D2D'}; }
 
-// ── End screen ─────────────────────────────────────────────────────────────
+// ─── End screen ───────────────────────────────────────────────────────────────
 async function showEnd(correct) {
-  const sc=calcScore(correct);
-  const {g,c}=grade(sc);
-  const merged=getMergedActions(cc);
-  const all={...merged.hist,...merged.exam,...merged.labs,...merged.img};
-  const found=Array.from(used).filter(k=>all[k]?.tag==='crit');
-  const allCrit=Object.values(all).filter(v=>v.tag==='crit');
-  const missed=allCrit.filter(v=>!found.some(k=>all[k]===v));
-  const unnecessary=Array.from(used).filter(k=>all[k]?.tag==='norm');
-  const ptsEarned=await saveAttempt(correct,sc);
-  const el=document.createElement('div'); el.className='overlay';
-  el.innerHTML=`<div class="modal">
+  const sc = calcScore(correct), {g,c} = grade(sc);
+  const merged = getMergedActions(cc);
+  const all = {...merged.hist,...merged.exam,...merged.labs,...merged.img};
+  const found = Array.from(used).filter(k=>all[k]?.tag==='crit');
+  const allCrit = Object.values(all).filter(v=>v.tag==='crit');
+  const missed = allCrit.filter(v=>!found.some(k=>all[k]===v));
+  const unnecessary = Array.from(used).filter(k=>all[k]?.tag==='norm');
+  const ptsEarned = await saveAttempt(correct, sc);
+  const el = document.createElement('div'); el.className='overlay';
+  el.innerHTML = `<div class="modal">
     <h2>${correct?'✓ Case complete':'Case ended'}</h2>
     <p class="msub">${correct?'Good clinical reasoning.':'Review what you found and missed.'}</p>
     <div class="score-box"><div class="score-num" style="color:${c}">${sc}</div><div class="score-grade" style="color:${c}">${g}</div>
@@ -1156,67 +1118,71 @@ async function showEnd(correct) {
     <div class="rsec"><div class="rst">Correct diagnosis</div><div class="rdiag">${cc.dx}</div><div class="rexp">${cc.learn}</div></div>
     ${found.length?`<div class="rsec"><div class="rst">Critical findings uncovered (${found.length}/${allCrit.length})</div><ul class="rlist">${found.map(k=>`<li class="g">✓ ${all[k].lbl}</li>`).join('')}</ul></div>`:''}
     ${missed.length?`<div class="rsec"><div class="rst">Critical findings missed (${missed.length})</div><ul class="rlist">${missed.map(v=>`<li class="bad">✗ ${v.lbl}</li>`).join('')}</ul></div>`:''}
-    ${unnecessary.length?`<div class="rsec"><div class="rst">Unnecessary tests (${unnecessary.length})</div><ul class="rlist">${unnecessary.map(k=>`<li class="m">− ${all[k].lbl}</li>`).join('')}</ul></div>`:''}
+    ${unnecessary.length?`<div class="rsec"><div class="rst">Unnecessary tests</div><ul class="rlist">${unnecessary.map(k=>`<li class="m">− ${all[k].lbl}</li>`).join('')}</ul></div>`:''}
     <div class="rsec"><div class="rst">Optimal pathway</div><ul class="rlist">${cc.path.map(s=>`<li class="m">→ ${s}</li>`).join('')}</ul></div>
-    ${TREATMENTS[cc.id]?`<button class="btn-end" style="background:#3B6D11;color:white;margin-top:6px" onclick="startTreatment()">▸ Continue to Management</button>`:''}
-    <button class="btn-end pr" onclick="showSel()" style="margin-top:6px">Try another case</button>
-    <button class="btn-end sc" onclick="restart()">Retry this case</button>
+    ${TREATMENTS[cc.id]?`<button class="btn-end" style="background:#3B6D11;color:white;margin-top:6px" id="contBtn">▸ Continue to Management</button>`:''}
+    <button class="btn-end pr" id="tryAnotherBtn" style="margin-top:6px">Try another case</button>
+    <button class="btn-end sc" id="retryBtn">Retry this case</button>
   </div>`;
-  document.getElementById('ov').innerHTML='';
+  document.getElementById('ov').innerHTML = '';
   document.getElementById('ov').appendChild(el);
+  if (TREATMENTS[cc.id]) document.getElementById('contBtn').onclick = startTreatment;
+  document.getElementById('tryAnotherBtn').onclick = showSel;
+  document.getElementById('retryBtn').onclick = restart;
 }
 
-// ── Case select / load ─────────────────────────────────────────────────────
+// ─── Case select / load ───────────────────────────────────────────────────────
 function showSel() {
-  document.getElementById('ov').innerHTML=`<div class="overlay"><div class="modal">
+  document.getElementById('ov').innerHTML = `<div class="overlay"><div class="modal">
     <h2>Select a case</h2><p class="msub">Choose your next patient encounter.</p>
-    <div class="case-grid">${CASES.map((c,i)=>`
-      <div class="ccard" onclick="load(${i})">
+    <div class="case-grid">${CASES.map((c,i) => `
+      <div class="ccard" data-idx="${i}">
         <div class="ccard-t">${c.pt.name}</div>
         <div class="ccard-s">${c.pt.age}yo ${c.pt.sex}<br>${c.cc.slice(0,42)}...</div>
         <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
           <span class="badge ${c.dif==='Beginner'?'badge-green':c.dif==='Intermediate'?'badge-amber':'badge-red'}" style="font-size:10px">${c.dif}</span>
           <span class="badge badge-blue" style="font-size:10px">${c.cat}</span>
-        </div></div>`).join('')}
-    </div></div></div>`;
+        </div>
+      </div>`).join('')}
+    </div>
+  </div></div>`;
+  document.querySelectorAll('.ccard').forEach(card => { card.onclick = () => load(+card.dataset.idx); });
 }
-function restart(){document.getElementById('ov').innerHTML='';txPhase=false;load(CASES.indexOf(cc));}
-
+function restart() { document.getElementById('ov').innerHTML=''; txPhase=false; load(CASES.indexOf(cc)); }
 function load(idx) {
-  document.getElementById('ov').innerHTML='';
-  txPhase=false;
-  cc=JSON.parse(JSON.stringify(CASES[idx]));
+  document.getElementById('ov').innerHTML = '';
+  txPhase = false;
+  cc = JSON.parse(JSON.stringify(CASES[idx]));
   cc.stepsUsed=0; cc.maxDiag=3; cc.diagAttempts=0;
-  used=new Set(); dAttempts=0;
-  document.getElementById('ptN').textContent=cc.pt.name;
-  document.getElementById('ptI').textContent=`${cc.pt.age}yo ${cc.pt.sex} · ${cc.pt.occ}`;
-  document.getElementById('ptCC').textContent=cc.cc;
-  document.getElementById('ptCC').style.color='#0C447C';
-  document.getElementById('stL').textContent=cc.maxSteps;
-  document.getElementById('dgL').textContent=cc.maxDiag;
-  document.getElementById('pb').style.cssText='width:100%;background:#185FA5';
-  document.getElementById('cNum').textContent=cc.title;
-  document.getElementById('catB').textContent=cc.cat;
-  const db=document.getElementById('difB');
-  db.textContent=cc.dif; db.className='badge '+(cc.dif==='Beginner'?'badge-green':cc.dif==='Intermediate'?'badge-amber':'badge-red');
+  used=new Set(); dAttempts=0; aiHistory=[];
+  document.getElementById('ptN').textContent  = cc.pt.name;
+  document.getElementById('ptI').textContent  = `${cc.pt.age}yo ${cc.pt.sex} · ${cc.pt.occ}`;
+  document.getElementById('ptCC').textContent = cc.cc;
+  document.getElementById('ptCC').style.color = '#0C447C';
+  document.getElementById('stL').textContent  = cc.maxSteps;
+  document.getElementById('dgL').textContent  = cc.maxDiag;
+  document.getElementById('pb').style.cssText = 'width:100%;background:#185FA5';
+  document.getElementById('cNum').textContent = cc.title;
+  document.getElementById('catB').textContent = cc.cat;
+  const db = document.getElementById('difB');
+  db.textContent = cc.dif;
+  db.className = 'badge '+(cc.dif==='Beginner'?'badge-green':cc.dif==='Intermediate'?'badge-amber':'badge-red');
   initNotes(); buildActionIndex();
-  document.getElementById('tl').innerHTML='';
+  document.getElementById('tl').innerHTML = '';
   addMsg('system','System',`<strong>${cc.title}</strong> — ${cc.pt.name}, ${cc.pt.age}yo ${cc.pt.sex}. Use the search bar to order tests or ask questions.`,'res');
   addMsg('system','Triage note',`Chief complaint: <em>${cc.cc}</em> · Vitals in notes panel.`,'res');
-  const si=document.getElementById('searchInput'); si.disabled=false; si.value='';
-  si.placeholder='Order a test or ask a question — e.g. "CT head", "family history", "troponin"';
-  const di=document.getElementById('diagInput'); di.disabled=false; di.value='';
-  document.getElementById('diagBtn').textContent='Diagnose';
-  document.getElementById('diagBtn').onclick=doDiag;
-  document.getElementById('diagInput').style.display='';
-  document.querySelectorAll('.adot').forEach(d=>d.style.display='');
+  const si = document.getElementById('searchInput');
+  si.disabled=false; si.value='';
+  si.placeholder='Order a test or ask anything — e.g. "CT head", "does it radiate?", "troponin"';
+  const di = document.getElementById('diagInput'); di.disabled=false; di.value='';
   document.getElementById('diagBtn').disabled=false;
-  document.querySelectorAll('.adot').forEach((d,i)=>{d.className='adot'+(i<3?' on':'');});
+  document.getElementById('diagBtn').textContent='Diagnose';
+  document.getElementById('diagInput').style.display='';
+  document.querySelectorAll('.adot').forEach((d,i)=>{ d.className='adot'+(i<3?' on':''); });
   closeSug();
-  resetAIHistory();
 }
 
-// ── Treatment Phase ────────────────────────────────────────────────────────
+// ─── Treatment phase ──────────────────────────────────────────────────────────
 function startTreatment() {
   document.getElementById('ov').innerHTML='';
   txPhase=true; txData=TREATMENTS[cc.id]; txUsed=new Set(); txStepsUsed=0;
@@ -1237,14 +1203,13 @@ function startTreatment() {
   document.getElementById('tl').innerHTML='';
   addMsg('system','DxArena',`<strong>${txData.title}</strong>`,'res');
   addMsg('system','Clinical situation',txData.intro,'res');
-  buildTxActionIndex(); closeSug();
-  resetAIHistory();
+  buildTxActionIndex(); closeSug(); aiHistory=[];
 }
 function buildTxActionIndex() {
   txAllActions=[];
   Object.entries(txData.actions).forEach(([k,v])=>{
-    if (!txUsed.has(k)) txAllActions.push({key:k,group:'tx',label:v.lbl,cat:'Treatment',
-      search:[v.lbl,(v.q||''),(v.a||''),'treatment drug management'].join(' ').toLowerCase()});
+    if (!txUsed.has(k)) txAllActions.push({ key:k, group:'tx', label:v.lbl, cat:'Treatment',
+      search:[v.lbl,(v.q||''),(v.a||''),'treatment drug management'].join(' ').toLowerCase() });
   });
   allActions=txAllActions;
 }
@@ -1257,16 +1222,16 @@ function tapTx(key) {
 }
 function addTxNote(entry) {
   const lbl=entry.lbl.toLowerCase();
-  let targetId='nHist';
-  if (lbl.includes('referral')||lbl.includes('admit')||lbl.includes('icu')||lbl.includes('rehab')) targetId='nImg';
-  else if (lbl.includes('ercp')||lbl.includes('pci')||lbl.includes('angiogram')||lbl.includes('surgery')) targetId='nLabs';
-  else if (lbl.includes('counsel')||lbl.includes('education')||lbl.includes('patient')||lbl.includes('monitor')||lbl.includes('follow')) targetId='nExam';
-  const el=document.getElementById(targetId);
+  let id='nHist';
+  if (lbl.includes('referral')||lbl.includes('admit')||lbl.includes('icu')||lbl.includes('rehab')) id='nImg';
+  else if (lbl.includes('ercp')||lbl.includes('pci')||lbl.includes('angiogram')||lbl.includes('surgery')) id='nLabs';
+  else if (lbl.includes('counsel')||lbl.includes('education')||lbl.includes('patient')||lbl.includes('monitor')||lbl.includes('follow')) id='nExam';
+  const el=document.getElementById(id);
   const empty=el.querySelector('.notes-empty'); if (empty) empty.remove();
-  let summary=entry.a.split('. ').slice(0,2).join('. ').trim();
-  if (summary.length>130) summary=summary.slice(0,127)+'…';
+  let s=entry.a.split('. ').slice(0,2).join('. ').trim();
+  if (s.length>130) s=s.slice(0,127)+'…';
   const row=document.createElement('div'); row.className='note-entry';
-  row.innerHTML=`<div class="note-dot ${entry.tag||'res'}"></div><div class="note-text"><strong>${entry.lbl}:</strong> ${summary}</div>`;
+  row.innerHTML=`<div class="note-dot ${entry.tag||'res'}"></div><div class="note-text"><strong>${entry.lbl}:</strong> ${s}</div>`;
   el.appendChild(row);
   document.querySelector('.notes-body').scrollTop=9999;
 }
@@ -1277,16 +1242,14 @@ function consumeTxStep() {
   const pct=left/txData.maxSteps*100;
   const pb=document.getElementById('pb');
   pb.style.width=pct+'%'; pb.style.background=pct>50?'#3B6D11':pct>25?'#BA7517':'#E24B4A';
-  if (left<=0){document.getElementById('searchInput').disabled=true;addMsg('system','System','All management steps used. Click Finish to see your debrief.','warn');}
+  if (left<=0){document.getElementById('searchInput').disabled=true;addMsg('system','System','All steps used. Click Finish to see your debrief.','warn');}
 }
 function finishTreatment() {
   const critActions=Object.entries(txData.actions).filter(([,v])=>v.tag==='crit').map(([k])=>k);
   const foundCrit=critActions.filter(k=>txUsed.has(k));
   const missedCrit=critActions.filter(k=>!txUsed.has(k));
   const unnecessary=Array.from(txUsed).filter(k=>txData.actions[k]?.tag==='norm');
-  const txScore=Math.min(100,Math.max(0,Math.round(
-    (foundCrit.length/Math.max(critActions.length,1))*70+
-    Math.max(0,txData.maxSteps-txStepsUsed)*2-unnecessary.length*5)));
+  const txScore=Math.min(100,Math.max(0,Math.round((foundCrit.length/Math.max(critActions.length,1))*70+Math.max(0,txData.maxSteps-txStepsUsed)*2-unnecessary.length*5)));
   const el=document.createElement('div'); el.className='overlay';
   el.innerHTML=`<div class="modal">
     <h2>✓ Case fully complete</h2><p class="msub">Diagnosis and management debrief.</p>
@@ -1296,71 +1259,43 @@ function finishTreatment() {
     <div class="rsec"><div class="rst">Key learning</div><div class="rexp">${txData.learn}</div></div>
     ${foundCrit.length?`<div class="rsec"><div class="rst">Critical treatments initiated (${foundCrit.length})</div><ul class="rlist">${foundCrit.map(k=>`<li class="g">✓ ${txData.actions[k].lbl}</li>`).join('')}</ul></div>`:''}
     ${missedCrit.length?`<div class="rsec"><div class="rst">Critical treatments missed (${missedCrit.length})</div><ul class="rlist">${missedCrit.map(k=>`<li class="bad">✗ ${txData.actions[k].lbl}</li>`).join('')}</ul></div>`:''}
-    ${unnecessary.length?`<div class="rsec"><div class="rst">Not indicated (${unnecessary.length})</div><ul class="rlist">${unnecessary.map(k=>`<li class="m">− ${txData.actions[k].lbl}</li>`).join('')}</ul></div>`:''}
+    ${unnecessary.length?`<div class="rsec"><div class="rst">Not indicated</div><ul class="rlist">${unnecessary.map(k=>`<li class="m">− ${txData.actions[k].lbl}</li>`).join('')}</ul></div>`:''}
     <div class="rsec"><div class="rst">Optimal management pathway</div><ul class="rlist">${txData.optimal.map(s=>`<li class="m">→ ${s}</li>`).join('')}</ul></div>
-    <button class="btn-end pr" onclick="showSel()">Try another case</button>
-    <button class="btn-end sc" onclick="restart()" style="margin-top:6px">Restart from diagnosis</button>
+    <button class="btn-end pr" id="txAnotherBtn">Try another case</button>
+    <button class="btn-end sc" id="txRestartBtn" style="margin-top:6px">Restart from diagnosis</button>
   </div>`;
   document.getElementById('ov').innerHTML=''; document.getElementById('ov').appendChild(el);
+  document.getElementById('txAnotherBtn').onclick = showSel;
+  document.getElementById('txRestartBtn').onclick = restart;
 }
 
-// ── AI Free-text ───────────────────────────────────────────────────────────
-let aiHistory = []; // maintains conversation history per case
-
-async function sendToAI(query) {
-  if (!query) return;
-  if (cc && cc.stepsUsed >= cc.maxSteps) {
-    addMsg('system','System','No steps remaining. Submit your diagnosis.','warn'); return;
-  }
-
-  const status = document.getElementById('aiStatus');
-  if (status) status.textContent = 'AI thinking...';
-
-  addMsg('user', 'You', query, 'act');
-
-  const caseContext = cc ?  : 'You are a clinical chart simulator.';
-
-  aiHistory.push({ role: 'user', content: query });
-
-  try {
-    const resp = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemPrompt: caseContext,
-        messages: aiHistory
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    aiHistory.push({ role: 'assistant', content: data.text });
-    addMsg('system', 'Chart (AI)', data.text, 'res');
-    if (cc && !txPhase) consumeStep();
-  } catch(e) {
-    addMsg('system', 'System', 'AI unavailable — ' + e.message, 'warn');
-    aiHistory.pop();
-  }
-  if (status) status.textContent = '';
-}
-
-function resetAIHistory() { aiHistory = []; }
-
-
-
-// Assign key functions to window for any inline handlers still in use
-window.doLogin = doLogin;
-window.doSignup = doSignup;
-window.doSignOut = doSignOut;
-window.switchAuth = switchAuth;
-window.showSel = showSel;
-window.doDiag = doDiag;
-window.showProfile = showProfile;
-window.load = load;
-window.restart = restart;
-window.startTreatment = startTreatment;
-window.finishTreatment = finishTreatment;
-
-initSetup();
+// ─── Wire up all event listeners ──────────────────────────────────────────────
+document.getElementById('loginBtn').onclick    = doLogin;
+document.getElementById('signupBtn').onclick   = doSignup;
+document.getElementById('toSignup').onclick    = () => showView('signup');
+document.getElementById('toLogin').onclick     = () => showView('login');
+document.getElementById('loginEmail').onkeydown    = e => { if(e.key==='Enter') doLogin(); };
+document.getElementById('loginPassword').onkeydown = e => { if(e.key==='Enter') doLogin(); };
+document.getElementById('signupEmail').onkeydown   = e => { if(e.key==='Enter') doSignup(); };
+document.getElementById('signupPassword').onkeydown= e => { if(e.key==='Enter') doSignup(); };
+document.getElementById('diagBtn').onclick     = doDiag;
+document.getElementById('diagInput').onkeydown = e => { if(e.key==='Enter') doDiag(); };
+document.getElementById('btnChangCase').onclick= showSel;
+document.getElementById('userPill').onclick    = showProfile;
+document.getElementById('searchInput').onfocus = function() { renderSug(this.value); };
+document.getElementById('searchInput').oninput = function() { renderSug(this.value); };
+document.getElementById('searchInput').onkeydown = function(e) {
+  if (e.key==='ArrowDown') { e.preventDefault(); moveSel(1); }
+  else if (e.key==='ArrowUp') { e.preventDefault(); moveSel(-1); }
+  else if (e.key==='Enter') {
+    e.preventDefault();
+    const items = document.getElementById('sugList').querySelectorAll('.sug-item');
+    const target = selIdx>=0 ? items[selIdx] : items[0];
+    if (target) { tap(target.dataset.key, target.dataset.group); this.value=''; }
+    else if (this.value.trim()) { const q=this.value.trim(); this.value=''; closeSug(); sendToAI(q); }
+  } else if (e.key==='Escape') { closeSug(); }
+};
+document.addEventListener('click', e => { if(!e.target.closest('.bottom-bar')) closeSug(); });
 
 </script>
 </body>
