@@ -1068,10 +1068,15 @@ async function sendToAI(query) {
   });
 
   candidates.sort((a,b) => b.score - a.score);
-  if (candidates.length > 0 && candidates[0].score >= 40) {
-    matched = candidates[0].v;
-    matchedGroup = candidates[0].grp;
-    const k = candidates[0].k;
+  // Only use predefined if we have a confident match
+  // Case-specific threshold: 240+ (200 boost + 40 minimum match)
+  // Universal threshold: 70+ (must match label or search string directly)
+  const best = candidates[0];
+  const threshold = best && Object.keys(cc[best.grp]||{}).includes(best.k) ? 240 : 70;
+  if (best && best.score >= threshold) {
+    matched = best.v;
+    matchedGroup = best.grp;
+    const k = best.k;
     // Mark as used and return the predefined answer directly
     used.add(k);
     addMsg('user','You', query, 'act');
