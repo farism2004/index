@@ -1075,7 +1075,7 @@ async function sendToAI(query) {
       if (d.error) throw new Error(d.error);
       aiHistory.push({ role:'assistant', content:d.text });
       addMsg('system','Chart (AI)',d.text,'res');
-      consumeTxStep();
+      txStepsUsed++;
     } catch(e) {
       addMsg('system','System','AI unavailable — '+e.message,'warn');
       aiHistory.pop();
@@ -1169,7 +1169,7 @@ The user is asking something not directly covered by the above. Respond as the c
     aiHistory.push({ role:'assistant', content:d.text });
     addMsg('system','Chart (AI)',d.text,'res');
     if (cc && !txPhase) consumeStep();
-    else if (txPhase) consumeTxStep();
+    else if (txPhase) txStepsUsed++;
   } catch(e) {
     addMsg('system','System','AI unavailable — '+e.message,'warn');
     aiHistory.pop();
