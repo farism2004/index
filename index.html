@@ -1032,12 +1032,60 @@ function moveSel(dir) {
 // ─── AI free-text ─────────────────────────────────────────────────────────────
 async function sendToAI(query) {
   if (!query) return;
-  if (cc && cc.stepsUsed >= cc.maxSteps) { addMsg('system','System','No steps remaining.','warn'); return; }
+  // Check correct step counter depending on phase
+  if (txPhase && txStepsUsed >= txData.maxSteps) { addMsg('system','System','No steps remaining.','warn'); return; }
+  if (!txPhase && cc && cc.stepsUsed >= cc.maxSteps) { addMsg('system','System','No steps remaining.','warn'); return; }
 
   // ── Step 1: Try to match against predefined findings first ──────────────
+  // In treatment phase, search treatment actions instead of case actions
+  if (txPhase) {
+    const q = query.toLowerCase().trim();
+    const qClean = q.replace(/\s+/g,'').replace(/[^a-z0-9]/g,'');
+    const txCandidates = [];
+    Object.entries(txData.actions).forEach(([k, v]) => {
+      if (txUsed.has(k)) return;
+      const lbl = (v.lbl||k).toLowerCase();
+      const lblClean = lbl.replace(/\s+/g,'').replace(/[^a-z0-9]/g,'');
+      const search = [v.lbl||k, v.q||'', v.a||''].join(' ').toLowerCase();
+      let score = 0;
+      if (lbl === q) score = 100;
+      else if (lbl.includes(q) || q.includes(lbl)) score = 90;
+      else if (lblClean === qClean || lblClean.includes(qClean) || qClean.includes(lblClean)) score = 88;
+      else if (search.includes(q)) score = 70;
+      else {
+        const words = q.split(/\s+/).filter(w=>w.length>=3);
+        if (words.length && words.every(w=>search.includes(w))) score = 60;
+        else if (words.some(w=>lbl.includes(w))) score = 40;
+      }
+      if (score >= 70) txCandidates.push({k, v, score});
+    });
+    txCandidates.sort((a,b) => b.score - a.score);
+    if (txCandidates.length > 0) {
+      tapTx(txCandidates[0].k);
+      return;
+    }
+    // No predefined match in treatment — send to AI with treatment context
+    document.getElementById('aiStatus').textContent = 'AI thinking…';
+    addMsg('user','You',query,'act');
+    aiHistory.push({ role:'user', content:query });
+    const txSys = `You are a clinical management simulator. The patient has just been diagnosed with ${cc.dx}. You are the clinical team. The user is asking about treatment and management. Respond in 1-3 sentences, clinically accurate. Do not invent treatments not indicated for this condition.`;
+    try {
+      const r = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ systemPrompt:txSys, messages:aiHistory }) });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      aiHistory.push({ role:'assistant', content:d.text });
+      addMsg('system','Chart (AI)',d.text,'res');
+      consumeTxStep();
+    } catch(e) {
+      addMsg('system','System','AI unavailable — '+e.message,'warn');
+      aiHistory.pop();
+    }
+    document.getElementById('aiStatus').textContent = '';
+    return;
+  }
+
   const merged = getMergedActions(cc);
   const q = query.toLowerCase().trim();
-  // Also try a compressed version for typo tolerance (remove spaces, common typos)
   const qClean = q.replace(/\s+/g,'').replace(/[^a-z0-9]/g,'');
   let matched = null;
   let matchedGroup = null;
@@ -1121,6 +1169,7 @@ The user is asking something not directly covered by the above. Respond as the c
     aiHistory.push({ role:'assistant', content:d.text });
     addMsg('system','Chart (AI)',d.text,'res');
     if (cc && !txPhase) consumeStep();
+    else if (txPhase) consumeTxStep();
   } catch(e) {
     addMsg('system','System','AI unavailable — '+e.message,'warn');
     aiHistory.pop();
@@ -1261,7 +1310,9 @@ function load(idx) {
 function startTreatment() {
   document.getElementById('ov').innerHTML='';
   txPhase=true; txData=TREATMENTS[cc.id]; txUsed=new Set(); txStepsUsed=0;
-  document.getElementById('stL').textContent=txData.maxSteps;
+
+  // Update left panel
+  document.getElementById('stL').textContent='∞';
   document.getElementById('dgL').textContent='—';
   document.getElementById('pb').style.cssText='width:100%;background:#3B6D11';
   document.getElementById('ptCC').textContent='▸ Treatment phase';
@@ -1269,18 +1320,34 @@ function startTreatment() {
   ['nHist','nExam','nLabs','nImg'].forEach(id=>{ document.getElementById(id).innerHTML='<span class="notes-empty">Nothing ordered yet</span>'; });
   document.getElementById('nVitals').innerHTML='<div class="note-entry"><div class="note-dot norm"></div><div class="note-text"><strong>Phase:</strong> Acute management</div></div>';
   ['lbl1','lbl2','lbl3','lbl4'].forEach((id,i)=>{ document.getElementById(id).textContent=['Drugs','Procedures','Referrals','Education'][i]; });
-  document.getElementById('diagBtn').textContent='Finish';
-  document.getElementById('diagBtn').onclick=finishTreatment;
+
+  // Bottom bar — replace Diagnose with Finish + hint button
   document.getElementById('diagInput').style.display='none';
   document.querySelectorAll('.adot').forEach(d=>d.style.display='none');
+  document.getElementById('diagBtn').textContent='Finish';
+  document.getElementById('diagBtn').style.background='#185FA5';
+  document.getElementById('diagBtn').onclick=finishTreatment;
+
+  // Add hint button next to Finish
+  const hintBtn = document.createElement('button');
+  hintBtn.id = 'hintBtn';
+  hintBtn.textContent = '💡 Hint';
+  hintBtn.style.cssText='background:#FAEEDA;color:#633806;border:1px solid #d4a84b;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap';
+  hintBtn.onclick = showHint;
+  document.getElementById('diagBtn').insertAdjacentElement('afterend', hintBtn);
+
+  // AI input
   document.getElementById('aiInput').value='';
   document.getElementById('aiInput').disabled=false;
-  document.getElementById('aiInput').placeholder='Order a treatment, drug, or referral — e.g. "nimodipine", "IV fluids", "neurosurgery"';
+  document.getElementById('aiInput').placeholder='Order a treatment, drug, or referral — e.g. "nimodipine", "ICU admission", "neurosurgery referral"';
+
   document.getElementById('tl').innerHTML='';
   addMsg('system','DxArena',`<strong>${txData.title}</strong>`,'res');
   addMsg('system','Clinical situation',txData.intro,'res');
-  buildTxActionIndex(); closeSug(); aiHistory=[];
+  addMsg('system','Tip','Type any treatment, drug, or management step. Use 💡 Hint if you get stuck. Click Finish when you\'re done.','warn');
+  buildTxActionIndex(); aiHistory=[];
 }
+
 function buildTxActionIndex() {
   txAllActions=[];
   Object.entries(txData.actions).forEach(([k,v])=>{
@@ -1289,13 +1356,64 @@ function buildTxActionIndex() {
   });
   allActions=txAllActions;
 }
+
 function tapTx(key) {
-  if (txUsed.has(key)||txStepsUsed>=txData.maxSteps) return;
+  if (txUsed.has(key)) return; // no step limit check
   const entry=txData.actions[key]; if (!entry) return;
-  txUsed.add(key); closeSug();
+  txUsed.add(key);
   addMsg('user','You',entry.q,'act');
-  setTimeout(()=>{ addMsg('system','Chart',entry.a,entry.tag||'res'); addTxNote(entry); consumeTxStep(); buildTxActionIndex(); },350);
+  setTimeout(async ()=>{
+    addMsg('system','Chart',entry.a,entry.tag||'res');
+    addTxNote(entry);
+    txStepsUsed++;
+    buildTxActionIndex();
+    // Generate teaching feedback after each action
+    await giveTxFeedback(entry);
+  },350);
 }
+
+async function giveTxFeedback(entry) {
+  // Only give feedback for crit/res actions, not norm
+  if (entry.tag === 'norm') {
+    addMsg('system','Teaching','⚠️ That intervention is not routinely indicated here. Consider focusing on the priorities for this condition.','warn');
+    return;
+  }
+  const remaining = Object.entries(txData.actions)
+    .filter(([k,v]) => !txUsed.has(k) && v.tag==='crit')
+    .map(([,v]) => v.lbl);
+  const sys = `You are a clinical educator giving brief feedback to a medical student managing a patient with ${cc.dx}.
+The student just ordered: "${entry.lbl}".
+The correct answer for this action is: "${entry.a}"
+Remaining critical actions not yet taken: ${remaining.length > 0 ? remaining.slice(0,3).join(', ') : 'None — well done!'}.
+Give 1-2 sentences of positive feedback on what they did, then if there are remaining critical actions, give ONE gentle hint toward the next most important step. Be encouraging. Do not list everything at once.`;
+  try {
+    document.getElementById('aiStatus').textContent = 'Teaching…';
+    const r = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({systemPrompt:sys,messages:[{role:'user',content:'Give feedback.'}]})});
+    const d = await r.json();
+    if (d.text) addMsg('system','Teaching 💡',d.text,'norm');
+  } catch(e) {}
+  document.getElementById('aiStatus').textContent='';
+}
+
+async function showHint() {
+  const remaining = Object.entries(txData.actions)
+    .filter(([k,v]) => !txUsed.has(k) && v.tag==='crit')
+    .map(([,v]) => v.lbl);
+  if (remaining.length===0) { addMsg('system','Teaching 💡','You\'ve covered all the critical management steps. Well done! Click Finish to see your full debrief.','norm'); return; }
+  const sys = `You are a clinical educator. A student is managing ${cc.dx} and needs a hint.
+Critical steps they still haven't taken: ${remaining.join(', ')}.
+Give a single Socratic hint — ask a guiding question that nudges them toward the most important missing step without giving it away directly. One sentence only.`;
+  try {
+    document.getElementById('aiStatus').textContent='Thinking…';
+    const r = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({systemPrompt:sys,messages:[{role:'user',content:'Give a hint.'}]})});
+    const d = await r.json();
+    if (d.text) addMsg('system','Hint 💡',d.text,'warn');
+  } catch(e) { addMsg('system','Hint 💡',`Consider: ${remaining[0]}...`,'warn'); }
+  document.getElementById('aiStatus').textContent='';
+}
+
 function addTxNote(entry) {
   const lbl=entry.lbl.toLowerCase();
   let id='nHist';
@@ -1311,31 +1429,30 @@ function addTxNote(entry) {
   el.appendChild(row);
   document.querySelector('.notes-body').scrollTop=9999;
 }
-function consumeTxStep() {
-  txStepsUsed++;
-  const left=txData.maxSteps-txStepsUsed;
-  document.getElementById('stL').textContent=left;
-  const pct=left/txData.maxSteps*100;
-  const pb=document.getElementById('pb');
-  pb.style.width=pct+'%'; pb.style.background=pct>50?'#3B6D11':pct>25?'#BA7517':'#E24B4A';
-  if (left<=0){document.getElementById('aiInput').disabled=true;addMsg('system','System','All steps used. Click Finish to see your debrief.','warn');}
-}
+
 function finishTreatment() {
+  // Remove hint button
+  document.getElementById('hintBtn')?.remove();
+
   const critActions=Object.entries(txData.actions).filter(([,v])=>v.tag==='crit').map(([k])=>k);
   const foundCrit=critActions.filter(k=>txUsed.has(k));
   const missedCrit=critActions.filter(k=>!txUsed.has(k));
   const unnecessary=Array.from(txUsed).filter(k=>txData.actions[k]?.tag==='norm');
-  const txScore=Math.min(100,Math.max(0,Math.round((foundCrit.length/Math.max(critActions.length,1))*70+Math.max(0,txData.maxSteps-txStepsUsed)*2-unnecessary.length*5)));
+  const txScore=Math.min(100,Math.max(0,Math.round(
+    (foundCrit.length/Math.max(critActions.length,1))*85 - unnecessary.length*5
+  )));
   const el=document.createElement('div'); el.className='overlay';
   el.innerHTML=`<div class="modal">
     <h2>✓ Case fully complete</h2><p class="msub">Diagnosis and management debrief.</p>
-    <div class="score-box"><div class="score-num" style="color:#3B6D11">${txScore}</div>
+    <div class="score-box">
+      <div class="score-num" style="color:#3B6D11">${txScore}</div>
       <div class="score-grade" style="color:#3B6D11">Management score</div>
-      <div class="score-lbl">${txStepsUsed}/${txData.maxSteps} steps · ${foundCrit.length}/${critActions.length} critical actions</div></div>
+      <div class="score-lbl">${foundCrit.length}/${critActions.length} critical actions completed</div>
+    </div>
     <div class="rsec"><div class="rst">Key learning</div><div class="rexp">${txData.learn}</div></div>
-    ${foundCrit.length?`<div class="rsec"><div class="rst">Critical treatments initiated (${foundCrit.length})</div><ul class="rlist">${foundCrit.map(k=>`<li class="g">✓ ${txData.actions[k].lbl}</li>`).join('')}</ul></div>`:''}
-    ${missedCrit.length?`<div class="rsec"><div class="rst">Critical treatments missed (${missedCrit.length})</div><ul class="rlist">${missedCrit.map(k=>`<li class="bad">✗ ${txData.actions[k].lbl}</li>`).join('')}</ul></div>`:''}
-    ${unnecessary.length?`<div class="rsec"><div class="rst">Not indicated</div><ul class="rlist">${unnecessary.map(k=>`<li class="m">− ${txData.actions[k].lbl}</li>`).join('')}</ul></div>`:''}
+    ${foundCrit.length?`<div class="rsec"><div class="rst">Critical treatments initiated ✓</div><ul class="rlist">${foundCrit.map(k=>`<li class="g">✓ ${txData.actions[k].lbl}</li>`).join('')}</ul></div>`:''}
+    ${missedCrit.length?`<div class="rsec"><div class="rst">Critical treatments missed</div><ul class="rlist">${missedCrit.map(k=>`<li class="bad">✗ ${txData.actions[k].lbl}</li>`).join('')}</ul></div>`:''}
+    ${unnecessary.length?`<div class="rsec"><div class="rst">Not indicated / unnecessary</div><ul class="rlist">${unnecessary.map(k=>`<li class="m">− ${txData.actions[k].lbl}</li>`).join('')}</ul></div>`:''}
     <div class="rsec"><div class="rst">Optimal management pathway</div><ul class="rlist">${txData.optimal.map(s=>`<li class="m">→ ${s}</li>`).join('')}</ul></div>
     <button class="btn-end pr" id="txAnotherBtn">Try another case</button>
     <button class="btn-end sc" id="txRestartBtn" style="margin-top:6px">Restart from diagnosis</button>
