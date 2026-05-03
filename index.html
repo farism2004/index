@@ -1037,25 +1037,32 @@ async function sendToAI(query) {
   // ── Step 1: Try to match against predefined findings first ──────────────
   const merged = getMergedActions(cc);
   const q = query.toLowerCase().trim();
+  // Also try a compressed version for typo tolerance (remove spaces, common typos)
+  const qClean = q.replace(/\s+/g,'').replace(/[^a-z0-9]/g,'');
   let matched = null;
   let matchedGroup = null;
 
-  // Build scored list just like the old search bar did
+  // Build scored list — case-specific actions get massive priority boost
   const candidates = [];
   ['hist','exam','labs','img'].forEach(grp => {
     Object.entries(merged[grp]).forEach(([k, v]) => {
-      if (used.has(k)) return; // already used
+      if (used.has(k)) return;
+      const isCase = Object.keys(cc[grp]||{}).includes(k);
       const lbl = (v.lbl||k).toLowerCase();
+      const lblClean = lbl.replace(/\s+/g,'').replace(/[^a-z0-9]/g,'');
       const search = [v.lbl||k, v.q||'', v.aliases||'', grp].join(' ').toLowerCase();
       let score = 0;
       if (lbl === q) score = 100;
       else if (lbl.includes(q) || q.includes(lbl)) score = 90;
+      else if (lblClean === qClean || lblClean.includes(qClean) || qClean.includes(lblClean)) score = 88;
       else if (search.includes(q)) score = 70;
       else {
         const words = q.split(/\s+/).filter(w=>w.length>=3);
         if (words.length && words.every(w=>search.includes(w))) score = 60;
         else if (words.some(w=>lbl.includes(w))) score = 40;
       }
+      // Case-specific actions always beat universal ones with same query match
+      if (isCase) score += 200;
       if (score > 0) candidates.push({k, v, grp, score});
     });
   });
